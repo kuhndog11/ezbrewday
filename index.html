@@ -3925,7 +3925,7 @@ async function signUpCloud(){
 async function signInCloud(){if(!await connectSupabase(false)) return showCloudModal(); const email=cloudSel('cloud-email')?.value?.trim(); const password=cloudSel('cloud-password')?.value||''; if(!email||!password){updateCloudStatus('Enter your email and password.','bad'); return} const {data,error}=await cloudState.client.auth.signInWithPassword({email,password}); if(error){updateCloudStatus(error.message,'bad'); return} cloudState.user=data?.user||null; updateCloudStatus('Signed in as '+(cloudState.user?.email||email)+'. Checking your Pro access…','ok'); hydrateLicenseState(); await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); setTimeout(()=>closeCloudModal(),700);}
 async function signOutCloud(){if(!cloudState.client) return; const {error}=await cloudState.client.auth.signOut(); if(error){updateCloudStatus(error.message,'bad'); return} cloudState.user=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; cloudState.proLicense=null; licenseState.valid=false; licenseState.key=''; licenseState.seed=''; licenseState.email=''; hydrateLicenseState(); renderLicenseSupportState(); refreshProUI(); refreshCloudModalAccess(); updateCloudStatus('Signed out.','');}
 
-const CLOUD_TABLE='ezbd_recipes';
+const CLOUD_TABLE='brewday_recipes';
 function safeVal(id){return document.getElementById(id)?.value ?? null}
 function safeText(id){return document.getElementById(id)?.textContent ?? null}
 function getActivePaneId(){return document.querySelector('.pane.active')?.id||'brew-notes'}
