@@ -1227,7 +1227,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
     <div class="modal-head">
       <div>
         <div class="modal-title">Account Login</div>
-        <div class="hdr-sub">Use the same email from Stripe checkout. New users should enter that email, create a password, and click Create Account. Returning users can sign in.</div>
+        <div class="hdr-sub" id="account-login-subtitle">Free users can use EzBrewDay without an account. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.</div>
       </div>
       <button class="btn btn-ghost btn-sm" type="button" onclick="closeCloudModal()">Close</button>
     </div>
@@ -1235,7 +1235,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
       <div class="modal-grid" id="cloud-auth-grid">
         <div id="cloud-config-block" class="hidden"></div>
         <div>
-          <div class="notebox" id="account-login-note" style="margin-bottom:12px">After payment, use the same email from Stripe checkout. If you are new, create a password and click Create Account. If you already have an account, just sign in.</div>
+          <div class="notebox" id="account-login-note" style="margin-bottom:12px">Free users can keep using EzBrewDay without an account. If you already have a Pro account, sign in below. Create Account only appears right after checkout and must use the same Stripe email.</div>
           <div id="auth-signed-in-summary" class="auth-signed-in-summary">
             <div style="font-weight:700;color:var(--text);margin-bottom:4px">Signed in</div>
             <div class="email" id="auth-signed-in-email">—</div>
@@ -1251,10 +1251,10 @@ button[onclick="connectSupabase(true)"]{display:none!important}
           <input type="password" id="cloud-password" placeholder="At least 6 characters">
           <div class="inline-actions">
             <button class="btn btn-primary btn-sm" type="button" onclick="signInCloud()">Sign In</button>
-            <button class="btn btn-ghost btn-sm" type="button" onclick="signUpCloud()">Create Account</button>
+            <button class="btn btn-ghost btn-sm" id="cloud-create-account-btn" type="button" onclick="signUpCloud()">Create Account</button>
             
           </div>
-          <div class="note-sm">Use the same email from Stripe checkout. New users should create a password and click <strong>Create Account</strong>. Returning users can click <strong>Sign In</strong>.</div></div>
+          <div class="note-sm" id="account-login-footnote">Free users do not need an account. Existing Pro users can sign in. Create Account only appears right after checkout and must use the same Stripe email.</div></div>
         </div>
       </div>
       <div id="cloud-status" class="cloud-status">Not connected.</div>
@@ -3799,7 +3799,9 @@ function maskCloudConfigFields(){
 }
 function refreshCloudModalAccess(){
   const note=cloudSel('cloud-pro-note');
-  const info=cloudSel('login-account-note');
+  const info=cloudSel('account-login-note');
+  const subtitle=cloudSel('account-login-subtitle');
+  const footnote=cloudSel('account-login-footnote');
   const section=cloudSel('cloud-recipes-section');
   const list=cloudSel('saved-cloud-list');
   const equipmentList=cloudSel('saved-cloud-equipment-list');
@@ -3809,6 +3811,14 @@ function refreshCloudModalAccess(){
   const summary=cloudSel('auth-signed-in-summary');
   const signedEmail=cloudSel('auth-signed-in-email');
   const signedPro=cloudSel('auth-signed-in-pro-text');
+  const createBtn=cloudSel('cloud-create-account-btn');
+  const emailInput=cloudSel('cloud-email');
+  const checkoutEmail=getStoredCheckoutEmail();
+  const canCreate=!!checkoutEmail;
+
+  if(emailInput && !signedIn && checkoutEmail && !String(emailInput.value||'').trim()){
+    emailInput.value=checkoutEmail;
+  }
 
   if(form) form.classList.toggle('hidden', signedIn);
   if(summary) summary.style.display = signedIn ? 'block' : 'none';
@@ -3821,9 +3831,27 @@ function refreshCloudModalAccess(){
       : 'Checking Pro access…';
   }
 
+  if(createBtn){
+    createBtn.style.display = canCreate ? '' : 'none';
+  }
+
+  if(subtitle){
+    subtitle.textContent = canCreate
+      ? `Use the same email from Stripe checkout (${checkoutEmail}). If you are new, create a password and click Create Account. Returning Pro users can sign in.`
+      : 'Free users can use EzBrewDay without an account. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.';
+  }
+
   if(info){
     info.style.display = signedIn ? 'none' : 'block';
-    info.innerHTML = 'Use the same email from Stripe checkout. New customers should enter that email, create a password, and click <strong>Create Account</strong>. Returning users can click <strong>Sign In</strong>. Pro will unlock automatically after sign-in when the subscription is active.';
+    info.innerHTML = canCreate
+      ? `After payment, use the same email from Stripe checkout <strong>${checkoutEmail}</strong>. If you are new, create a password and click <strong>Create Account</strong>. If you already have an account, click <strong>Sign In</strong>.`
+      : 'Free users can keep using EzBrewDay without an account. If you already have a Pro account, sign in below. <strong>Create Account</strong> only appears right after checkout and must use the same Stripe email.';
+  }
+
+  if(footnote){
+    footnote.innerHTML = canCreate
+      ? `Stripe checkout email detected: <strong>${checkoutEmail}</strong>. Create Account is only available for that email in this browser session.`
+      : 'Free users do not need an account. Existing Pro users can sign in. Create Account only appears right after checkout and must use the same Stripe email.';
   }
 
   if(note){
@@ -3868,10 +3896,32 @@ async function showCloudLibrary(){
 function showCloudModal(){document.getElementById('cloud-overlay')?.classList.add('show'); refreshCloudModalAccess();}
 function closeCloudModal(){document.getElementById('cloud-overlay')?.classList.remove('show');}
 function saveCloudConfig(){updateCloudStatus('Connection is configured automatically.','ok'); connectSupabase(true)}
-async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} cloudState.client=window.supabase.createClient(cfg.url,cfg.anon); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Use the same email from Stripe checkout. New users should create an account first, then sign in to verify Pro access.', cloudState.user?'ok':''); if(cloudState.user){refreshServerProStatus(false)} if(cloudState.client?.auth?.onAuthStateChange){cloudState.client.auth.onAuthStateChange((_evt,session)=>{cloudState.user=session?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Use the same email from Stripe checkout. New users should create an account first, then sign in to verify Pro access.', cloudState.user?'ok':''); if(cloudState.user){refreshServerProStatus(false)} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
+async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} cloudState.client=window.supabase.createClient(cfg.url,cfg.anon); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){refreshServerProStatus(false)} if(cloudState.client?.auth?.onAuthStateChange){cloudState.client.auth.onAuthStateChange((_evt,session)=>{cloudState.user=session?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){refreshServerProStatus(false)} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
  return true;
 }catch(e){updateCloudStatus('Connection failed: '+e.message,'bad'); cloudState.connected=false; return false}}
-async function signUpCloud(){if(!await connectSupabase(false)) return showCloudModal(); const email=cloudSel('cloud-email')?.value?.trim(); const password=cloudSel('cloud-password')?.value||''; if(!email||password.length<6){updateCloudStatus('Enter a valid email and password (6+ chars).','bad'); return} const {error}=await cloudState.client.auth.signUp({email,password}); if(error){updateCloudStatus(error.message,'bad'); return} updateCloudStatus('Account created. Check email if confirmation is enabled.','ok');}
+async function signUpCloud(){
+  if(!await connectSupabase(false)) return showCloudModal();
+  const email=cloudSel('cloud-email')?.value?.trim()||'';
+  const password=cloudSel('cloud-password')?.value||'';
+  const checkoutEmail=getStoredCheckoutEmail();
+  if(!checkoutEmail){
+    updateCloudStatus('Create Account is only available right after Stripe checkout. Free users do not need an account. Existing Pro users can sign in.','bad');
+    refreshCloudModalAccess();
+    return;
+  }
+  if(!email||password.length<6){
+    updateCloudStatus('Enter the same Stripe checkout email and a password with at least 6 characters.','bad');
+    return;
+  }
+  if(email.trim().toLowerCase()!==checkoutEmail){
+    updateCloudStatus('Create Account must use the same email used during Stripe checkout: '+checkoutEmail,'bad');
+    return;
+  }
+  const {error}=await cloudState.client.auth.signUp({email,password});
+  if(error){updateCloudStatus(error.message,'bad'); return}
+  updateCloudStatus('Account created. You can now sign in with '+email+'.','ok');
+  refreshCloudModalAccess();
+}
 async function signInCloud(){if(!await connectSupabase(false)) return showCloudModal(); const email=cloudSel('cloud-email')?.value?.trim(); const password=cloudSel('cloud-password')?.value||''; if(!email||!password){updateCloudStatus('Enter your email and password.','bad'); return} const {data,error}=await cloudState.client.auth.signInWithPassword({email,password}); if(error){updateCloudStatus(error.message,'bad'); return} cloudState.user=data?.user||null; updateCloudStatus('Signed in as '+(cloudState.user?.email||email)+'. Checking your Pro access…','ok'); hydrateLicenseState(); await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); setTimeout(()=>closeCloudModal(),700);}
 async function signOutCloud(){if(!cloudState.client) return; const {error}=await cloudState.client.auth.signOut(); if(error){updateCloudStatus(error.message,'bad'); return} cloudState.user=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; cloudState.proLicense=null; licenseState.valid=false; licenseState.key=''; licenseState.seed=''; licenseState.email=''; hydrateLicenseState(); renderLicenseSupportState(); refreshProUI(); refreshCloudModalAccess(); updateCloudStatus('Signed out.','');}
 
@@ -4328,6 +4378,45 @@ const STRIPE_YEARLY_LINK='https://buy.stripe.com/3cI8wQfrn31r8gj3sj3wQ03';
 const BUY_BRETT_A_BEER_LINK='https://buy.stripe.com/cNifZigvrbxXfIL4wn3wQ01';
 const APP_WEBSITE_DOMAIN='app.ezbrewday.com';
 
+function getStoredCheckoutEmail(){
+  try{
+    const sessionEmail=(sessionStorage.getItem('ezbd_last_checkout_email')||'').trim();
+    if(sessionEmail) return sessionEmail.toLowerCase();
+  }catch(e){}
+  try{
+    const savedAt=Number(localStorage.getItem('ezbd_last_checkout_email_ts')||0);
+    const savedEmail=(localStorage.getItem('ezbd_last_checkout_email')||'').trim().toLowerCase();
+    if(savedEmail && savedAt && (Date.now()-savedAt) < 1000*60*60*24){
+      return savedEmail;
+    }
+  }catch(e){}
+  return '';
+}
+function rememberCheckoutEmail(email){
+  const value=(email||'').trim().toLowerCase();
+  if(!value) return;
+  try{sessionStorage.setItem('ezbd_last_checkout_email',value)}catch(e){}
+  try{
+    localStorage.setItem('ezbd_last_checkout_email',value);
+    localStorage.setItem('ezbd_last_checkout_email_ts',String(Date.now()));
+  }catch(e){}
+}
+function clearStoredCheckoutEmail(){
+  try{sessionStorage.removeItem('ezbd_last_checkout_email')}catch(e){}
+  try{
+    localStorage.removeItem('ezbd_last_checkout_email');
+    localStorage.removeItem('ezbd_last_checkout_email_ts');
+  }catch(e){}
+}
+function hasCheckoutSignupAccess(){
+  return !!getStoredCheckoutEmail();
+}
+function canCreateAccountForEmail(email){
+  const stored=getStoredCheckoutEmail();
+  const value=(email||'').trim().toLowerCase();
+  return !!stored && !!value && stored===value;
+}
+
 function getBestVisibleProLicense(rows){
   const list=Array.isArray(rows)?rows:[];
   if(!list.length) return null;
@@ -4384,9 +4473,7 @@ function closeUpgradeModal(){document.getElementById('upgrade-overlay')?.classLi
 function startBeerCheckout(){ window.open(BUY_BRETT_A_BEER_LINK,'_blank','noopener,noreferrer'); }
 function storeCheckoutEmail(){
   const email=(cloudState&&cloudState.user&&cloudState.user.email)||document.getElementById('cloud-email')?.value||document.getElementById('license-email-input')?.value||'';
-  if(email){
-    try{localStorage.setItem('ezbd_last_checkout_email',email)}catch(e){}
-  }
+  if(email) rememberCheckoutEmail(email);
 }
 function startMonthlyCheckout(){
   storeCheckoutEmail();
