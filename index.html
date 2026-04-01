@@ -2,310 +2,151 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EZ Brew Day | Brew Smarter</title>
-  <meta name="description" content="EZ Brew Day helps brewers design recipes, organize brew day, manage water chemistry, and upgrade to Pro for cloud tools, taproom display, and more." />
+  <meta name="description" content="Plan, track, and perfect your brew day with EZ Brew Day." />
+
   <style>
-    :root {
-      --bg:#0a0f1d; --bg2:#11182b; --panel:#151f35; --text:#ecf2ff; --muted:#a7b5d1;
-      --green:#1fd488; --green2:#0fa86a; --orange:#f5a623; --orange2:#ffcf72; --max:1180px;
-    }
-    * { box-sizing:border-box; }
-    html { scroll-behavior:smooth; }
     body {
-      margin:0; color:var(--text);
-      font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(31,212,136,.12), transparent 20%),
-        radial-gradient(circle at top right, rgba(245,166,35,.10), transparent 18%),
-        linear-gradient(180deg,#09101d 0%,#0a0f1d 100%);
+      margin:0;
+      font-family: Arial, sans-serif;
+      background:#0a0f1d;
+      color:#ecf2ff;
+      text-align:center;
     }
-    a { color:inherit; text-decoration:none; }
-    .wrap { max-width:var(--max); margin:0 auto; padding:0 22px; }
-    .nav { position:sticky; top:0; z-index:50; backdrop-filter:blur(14px); background:rgba(10,15,29,.76); border-bottom:1px solid rgba(255,255,255,.06); }
-    .nav-inner { max-width:var(--max); margin:0 auto; padding:14px 22px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
-    .brand img { height:42px; width:auto; display:block; }
-    .nav-links { display:flex; gap:22px; align-items:center; color:var(--muted); font-size:14px; }
-    .btn { display:inline-flex; align-items:center; justify-content:center; border:1px solid transparent; border-radius:999px; padding:12px 18px; font-weight:700; transition:.18s ease; cursor:pointer; white-space:nowrap; }
-    .btn:hover { transform:translateY(-1px); }
-    .btn-primary { background:linear-gradient(135deg,var(--green),var(--green2)); color:#062618; box-shadow:0 12px 28px rgba(31,212,136,.22); }
-    .btn-secondary { background:rgba(255,255,255,.02); color:var(--text); border-color:rgba(255,255,255,.12); }
-    .btn-accent { background:linear-gradient(135deg,var(--orange),var(--orange2)); color:#2c1900; box-shadow:0 12px 28px rgba(245,166,35,.20); }
-    .hero { padding:70px 0 36px; }
-    .hero-grid { display:grid; grid-template-columns:1.05fr .95fr; gap:34px; align-items:center; }
-    .eyebrow { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; border:1px solid rgba(31,212,136,.24); background:rgba(31,212,136,.08); color:#9ef0c7; font-size:13px; font-weight:700; }
-    h1 { font-size:clamp(42px,6vw,72px); line-height:.98; margin:18px 0 16px; letter-spacing:-.04em; }
-    .lead { max-width:640px; font-size:18px; color:var(--muted); line-height:1.65; }
-    .hero-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:24px; }
-    .mini-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:28px; }
-    .stat { padding:16px 18px; border-radius:18px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); }
-    .stat strong { display:block; font-size:25px; margin-bottom:4px; }
-    .stat span { color:var(--muted); font-size:14px; }
-    .app-shot { padding:18px; border-radius:28px; background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.09); box-shadow:0 20px 48px rgba(0,0,0,.35); }
-    .window { background:var(--bg2); border:1px solid rgba(255,255,255,.06); border-radius:22px; overflow:hidden; }
-    .window-top { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.02); color:var(--muted); font-size:13px; }
-    .dots { display:flex; gap:8px; }
-    .dots span { display:block; width:10px; height:10px; border-radius:50%; background:#31446f; }
-    .dots span:nth-child(1) { background:#ef6c5b; } .dots span:nth-child(2) { background:#f1c85a; } .dots span:nth-child(3) { background:#41d39f; }
-    .window-body { padding:18px; }
-    .screen-grid { display:grid; grid-template-columns:1.1fr .9fr; gap:14px; }
-    .screen-card { background:var(--panel); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:16px; }
-    .screen-title { margin-bottom:10px; color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
-    .metric-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
-    .metric { padding:12px; border-radius:14px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); }
-    .metric b { display:block; font-size:20px; margin-bottom:2px; }
-    .metric small { color:var(--muted); }
-    .bars { display:grid; gap:10px; margin-top:14px; }
-    .bar { height:12px; border-radius:999px; overflow:hidden; background:#0d1528; border:1px solid rgba(255,255,255,.04); }
-    .bar span { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,var(--green),#7ef3c6); }
-    .tags { display:flex; flex-wrap:wrap; gap:8px; }
-    .tag { padding:8px 10px; border-radius:999px; font-size:12px; font-weight:700; color:#c9fff0; background:rgba(31,212,136,.10); border:1px solid rgba(31,212,136,.20); }
-    section { padding:36px 0; }
-    .section-head { max-width:760px; margin-bottom:24px; }
-    .section-head h2 { margin:0 0 10px; font-size:clamp(28px,4vw,46px); letter-spacing:-.03em; line-height:1.04; }
-    .section-head p { margin:0; color:var(--muted); font-size:17px; line-height:1.65; }
-    .feature-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
-    .feature { min-height:190px; padding:20px; border-radius:22px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); }
-    .icon { width:46px; height:46px; display:grid; place-items:center; border-radius:14px; margin-bottom:14px; font-size:22px; background:rgba(31,212,136,.12); border:1px solid rgba(31,212,136,.16); }
-    .feature h3 { margin:0 0 8px; font-size:20px; }
-    .feature p { margin:0; color:var(--muted); font-size:15px; line-height:1.6; }
-    .pricing { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; align-items:stretch; }
-    .price-card { position:relative; padding:26px; border-radius:28px; background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.025)); border:1px solid rgba(255,255,255,.09); box-shadow:0 20px 48px rgba(0,0,0,.35); }
-    .price-card.highlight { border-color:rgba(31,212,136,.34); box-shadow:0 22px 55px rgba(10,20,40,.48),0 0 0 1px rgba(31,212,136,.16) inset; }
-    .price-card.orange { border-color:rgba(245,166,35,.30); box-shadow:0 22px 55px rgba(10,20,40,.48),0 0 0 1px rgba(245,166,35,.10) inset; }
-    .badge { display:inline-flex; padding:8px 12px; border-radius:999px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
-    .badge-basic { background:rgba(255,255,255,.06); color:#d8e0f2; }
-    .badge-pro { background:rgba(31,212,136,.12); color:#b8ffe0; border:1px solid rgba(31,212,136,.22); }
-    .badge-annual { background:rgba(245,166,35,.12); color:#ffe1a8; border:1px solid rgba(245,166,35,.24); }
-    .price-card h3 { font-size:30px; margin:14px 0 6px; }
-    .sub { color:var(--muted); font-size:15px; line-height:1.6; }
-    .price { margin:20px 0 6px; font-size:48px; font-weight:900; letter-spacing:-.04em; }
-    .price small { font-size:16px; color:var(--muted); font-weight:600; }
-    .save-badge { display:inline-block; margin-top:8px; color:#ffd998; font-size:13px; font-weight:800; }
-    .list { display:grid; gap:12px; margin-top:22px; }
-    .list div { display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-top:1px solid rgba(255,255,255,.06); }
-    .list div:first-child { border-top:none; }
-    .check { color:var(--green); font-weight:900; } .x { color:#ffd998; font-weight:900; }
-    .price-actions { display:flex; flex-direction:column; gap:10px; margin-top:22px; }
-    .small-note { font-size:12px; color:var(--muted); line-height:1.55; }
-    .compare { margin-top:20px; overflow:hidden; border-radius:24px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); }
-    table { width:100%; border-collapse:collapse; }
-    th, td { text-align:left; padding:16px 18px; }
-    thead th { background:rgba(255,255,255,.03); color:var(--muted); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
-    tbody tr+tr td { border-top:1px solid rgba(255,255,255,.06); }
-    .yes { color:var(--green); font-weight:800; } .no { color:#ffd998; font-weight:800; }
-    .cta { margin:26px 0 56px; padding:34px; border-radius:30px; background:radial-gradient(circle at left top,rgba(31,212,136,.22),transparent 28%),linear-gradient(135deg,#122544,#0f1931); border:1px solid rgba(255,255,255,.08); display:flex; justify-content:space-between; gap:24px; align-items:center; }
-    .cta h2 { margin:0 0 8px; font-size:clamp(28px,4vw,44px); letter-spacing:-.03em; }
-    .cta p { margin:0; max-width:680px; color:var(--muted); font-size:17px; line-height:1.65; }
-    footer { padding:24px 0 50px; color:var(--muted); font-size:14px; }
-    .footer-row { display:flex; justify-content:space-between; align-items:center; gap:16px; padding-top:22px; border-top:1px solid rgba(255,255,255,.07); }
-    @media (max-width:1100px) { .pricing { grid-template-columns:1fr; } }
-    @media (max-width:980px) {
-      .hero-grid, .feature-grid, .screen-grid { grid-template-columns:1fr; }
-      .mini-stats, .metric-row { grid-template-columns:repeat(2,1fr); }
-      .nav-links { display:none; }
-      .cta { flex-direction:column; align-items:flex-start; }
+
+    .container {
+      max-width:900px;
+      margin:auto;
+      padding:40px 20px;
     }
-    @media (max-width:640px) {
-      .mini-stats, .metric-row { grid-template-columns:1fr; }
-      .hero { padding-top:44px; }
-      h1 { font-size:44px; }
-      .price { font-size:40px; }
-      .compare { overflow:auto; }
-      table { min-width:680px; }
-      .brand img { height:34px; }
+
+    h1 {
+      font-size:48px;
+      margin-bottom:10px;
+    }
+
+    p {
+      color:#a7b5d1;
+      font-size:18px;
+    }
+
+    .buttons {
+      margin-top:30px;
+      display:flex;
+      gap:15px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+
+    .btn {
+      padding:14px 22px;
+      border-radius:30px;
+      font-weight:bold;
+      text-decoration:none;
+      display:inline-block;
+    }
+
+    .primary {
+      background:#1fd488;
+      color:#062618;
+    }
+
+    .secondary {
+      background:#f5a623;
+      color:#2c1900;
+    }
+
+    .outline {
+      border:1px solid #fff;
+      color:#fff;
+    }
+
+    .section {
+      margin-top:60px;
+    }
+
+    .pricing {
+      display:flex;
+      gap:20px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+
+    .card {
+      background:#151f35;
+      padding:20px;
+      border-radius:20px;
+      width:260px;
+    }
+
+    .price {
+      font-size:36px;
+      margin:10px 0;
     }
   </style>
 </head>
+
 <body>
-  <header class="nav">
-    <div class="nav-inner">
-      <div class="brand"><img src="data:image/png;base64,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" alt="EZ Brew Day logo" /></div>
-      <nav class="nav-links">
-        <a href="#features">Features</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#compare">Compare</a>
-        <a href="https://ezbrewday.netlify.app" target="_blank" rel="noopener" class="btn btn-primary">Launch App</a>
-      </nav>
+
+<div class="container">
+
+  <h1>EZ Brew Day</h1>
+  <p>Brew smarter. Track better. Pour better.</p>
+
+  <div class="buttons">
+    <a href="https://app.ezbrewday.com" class="btn primary">
+      Launch App
+    </a>
+    <a href="#pricing" class="btn outline">
+      View Pricing
+    </a>
+  </div>
+
+  <div class="section">
+    <h2>What You Get</h2>
+    <p>
+      Recipe building, brew day tracking, water chemistry tools,
+      timers, and a full taproom display system — all in one place.
+    </p>
+  </div>
+
+  <div id="pricing" class="section">
+    <h2>Pricing</h2>
+
+    <div class="pricing">
+
+      <div class="card">
+        <h3>Free</h3>
+        <p class="price">$0</p>
+        <p>Basic brewing tools</p>
+        <a href="https://app.ezbrewday.com" class="btn outline">
+          Start Free
+        </a>
+      </div>
+
+      <div class="card">
+        <h3>Pro Monthly</h3>
+        <p class="price">$5/mo</p>
+        <p>Cloud save, advanced tools, taproom display</p>
+        <a href="https://buy.stripe.com/14A14ofrncC1gMPfb13wQ02" class="btn primary">
+          Go Pro
+        </a>
+      </div>
+
+      <div class="card">
+        <h3>Pro Yearly</h3>
+        <p class="price">$45/yr</p>
+        <p>Save money + full feature access</p>
+        <a href="https://buy.stripe.com/3cI8wQfrn31r8gj3sj3wQ03" class="btn secondary">
+          Go Yearly
+        </a>
+      </div>
+
     </div>
-  </header>
+  </div>
 
-  <main>
-    <section class="hero">
-      <div class="wrap hero-grid">
-        <div>
-          <div class="eyebrow">Built for brewers who want more than a calculator</div>
-          <h1>Brew smarter.<br>Track more.<br>Pour better.</h1>
-          <p class="lead">EZ Brew Day brings recipe design, water chemistry, hop scheduling, yeast tools, brewday workflow, and taproom features into one clean brewing workspace. Start with the basics for free, then unlock Pro for cloud saves, brewery branding, cleaner exports, and more advanced brewery tools.</p>
-          <div class="hero-actions">
-            <a class="btn btn-primary" href="https://ezbrewday.netlify.app" target="_blank" rel="noopener">Start Free</a>
-            <a class="btn btn-secondary" href="https://ezbrewday.netlify.app" target="_blank" rel="noopener">Launch App</a>
-            <a class="btn btn-accent" href="#pricing">See Pricing</a>
-          </div>
-          <div class="mini-stats">
-            <div class="stat"><strong>All-in-one</strong><span>Recipe, brewday, water, yeast, and tap tools in one app</span></div>
-            <div class="stat"><strong>Start free</strong><span>Core brewing calculations and recipe building included</span></div>
-            <div class="stat"><strong>Go Pro</strong><span>Cloud recipes, branding, tap analytics, and cleaner exports</span></div>
-          </div>
-        </div>
-        <div class="app-shot">
-          <div class="window">
-            <div class="window-top"><div class="dots"><span></span><span></span><span></span></div><div>ezbrewday.netlify.app</div></div>
-            <div class="window-body">
-              <div class="screen-grid">
-                <div class="screen-card">
-                  <div class="screen-title">Recipe snapshot</div>
-                  <div class="metric-row">
-                    <div class="metric"><b>1.056</b><small>Original Gravity</small></div>
-                    <div class="metric"><b>38</b><small>IBU</small></div>
-                    <div class="metric"><b>6.1%</b><small>ABV</small></div>
-                    <div class="metric"><b>11</b><small>SRM</small></div>
-                  </div>
-                  <div class="bars"><div class="bar"><span style="width:78%"></span></div><div class="bar"><span style="width:62%"></span></div><div class="bar"><span style="width:84%"></span></div></div>
-                </div>
-                <div class="screen-card">
-                  <div class="screen-title">Popular Pro tools</div>
-                  <div class="tags">
-                    <span class="tag">Cloud Recipe Library</span><span class="tag">Custom Branding</span><span class="tag">Clean PDF Export</span>
-                    <span class="tag">Taproom Display</span><span class="tag">Unlimited Taps</span><span class="tag">Theme Presets</span>
-                  </div>
-                </div>
-              </div>
-              <div class="screen-card" style="margin-top:14px">
-                <div class="screen-title">Why brewers use EZ Brew Day</div>
-                <p style="margin:0;color:var(--muted);line-height:1.65">Build recipes with confidence, keep brew day organized, and present your beers better with a polished public tap page and brewery branding tools.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+</div>
 
-    <section id="features">
-      <div class="wrap">
-        <div class="section-head">
-          <h2>Everything you need from grain bill to first pour</h2>
-          <p>EZ Brew Day handles the core of the brewing process while also giving Pro users the tools to save, brand, share, and present their beer more professionally.</p>
-        </div>
-        <div class="feature-grid">
-          <div class="feature"><div class="icon">🧪</div><h3>Recipe design</h3><p>Create and refine recipes with gravity estimates, bitterness, color targets, style guidance, and efficiency planning.</p></div>
-          <div class="feature"><div class="icon">💧</div><h3>Water chemistry</h3><p>Build better beer with tools for water adjustments, profile planning, and chemistry awareness right inside your brew workflow.</p></div>
-          <div class="feature"><div class="icon">🌾</div><h3>Ingredient planning</h3><p>Manage grain, hops, yeast, and other recipe inputs in one place so the whole brew is easier to build and review.</p></div>
-          <div class="feature"><div class="icon">⏱️</div><h3>Brewday workflow</h3><p>Move from setup to execution with timers, workflow support, and brewday notes that help you capture what really happened.</p></div>
-          <div class="feature"><div class="icon">🍺</div><h3>Taproom tools</h3><p>Use on-tap displays and public-facing beer pages to showcase what is currently pouring and give guests a cleaner experience.</p></div>
-          <div class="feature"><div class="icon">📄</div><h3>Exports and sharing</h3><p>Generate PDFs and keep your process documented. Pro removes the watermark and gives your reports a more polished finish.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <section id="pricing">
-      <div class="wrap">
-        <div class="section-head">
-          <h2>Simple pricing that grows with your brewing</h2>
-          <p>Start with the free version, then move up when you want cloud recipes, better branding, cleaner exports, and stronger taproom features.</p>
-        </div>
-        <div class="pricing">
-          <div class="price-card">
-            <span class="badge badge-basic">Basic</span>
-            <h3>Get brewing for free</h3>
-            <div class="sub">Perfect for brewers who want the core app without extra storage, branding, or premium presentation tools.</div>
-            <div class="price">$0 <small>to start</small></div>
-            <div class="list">
-              <div><span class="check">✓</span><span>Core brewing calculations</span></div>
-              <div><span class="check">✓</span><span>Recipe design tools</span></div>
-              <div><span class="check">✓</span><span>Water, grain, hop, and yeast workflows</span></div>
-              <div><span class="x">•</span><span>Cloud recipe library locked</span></div>
-              <div><span class="x">•</span><span>Branding and theme customization locked</span></div>
-              <div><span class="x">•</span><span>PDF export includes watermark</span></div>
-            </div>
-            <div class="price-actions">
-              <a class="btn btn-primary" href="https://ezbrewday.netlify.app" target="_blank" rel="noopener">Start Free</a>
-              <div class="small-note">Send users straight into the app with your free CTA.</div>
-            </div>
-          </div>
-
-          <div class="price-card highlight">
-            <span class="badge badge-pro">Pro Monthly</span>
-            <h3>Flexible monthly access</h3>
-            <div class="sub">A good fit for brewers who want Pro now and prefer a lower monthly commitment.</div>
-            <div class="price">$5 <small>/ month</small></div>
-            <div class="list">
-              <div><span class="check">✓</span><span>Everything in Basic</span></div>
-              <div><span class="check">✓</span><span>JSON save and import</span></div>
-              <div><span class="check">✓</span><span>Cloud recipe library</span></div>
-              <div><span class="check">✓</span><span>Custom logo and brewery branding</span></div>
-              <div><span class="check">✓</span><span>Ingredient library editing</span></div>
-              <div><span class="check">✓</span><span>Clean PDF export with no watermark</span></div>
-              <div><span class="check">✓</span><span>Taproom Pro tools, analytics, and public tap pages</span></div>
-            </div>
-            <div class="price-actions">
-              <a class="btn btn-primary" href="https://buy.stripe.com/14A14ofrncC1gMPfb13wQ02" target="_blank" rel="noopener">Upgrade Monthly</a>
-              <a class="btn btn-secondary" href="https://ezbrewday.netlify.app" target="_blank" rel="noopener">Already have an account?</a>
-            </div>
-          </div>
-
-          <div class="price-card orange">
-            <span class="badge badge-annual">Pro Annual</span>
-            <h3>Best value for committed brewers</h3>
-            <div class="sub">Built for serious users who want the full platform and better value over the year.</div>
-            <div class="price">$45 <small>/ year</small></div>
-            <div class="save-badge">Most Popular</div>
-            <div class="list">
-              <div><span class="check">✓</span><span>Everything in Pro Monthly</span></div>
-              <div><span class="check">✓</span><span>Best value annual plan</span></div>
-              <div><span class="check">✓</span><span>Cloud saves and polished exports</span></div>
-              <div><span class="check">✓</span><span>Branding, themes, and brewery identity tools</span></div>
-              <div><span class="check">✓</span><span>Unlimited taproom presentation tools</span></div>
-              <div><span class="check">✓</span><span>Ideal featured plan for homepage conversions</span></div>
-            </div>
-            <div class="price-actions">
-              <a class="btn btn-accent" href="https://buy.stripe.com/3cI8wQfrn31r8gj3sj3wQ03" target="_blank" rel="noopener">Upgrade Annual</a>
-              <div class="small-note">This is the best value option and your strongest conversion path.</div>
-            </div>
-          </div>
-        </div>
-
-        <div id="compare" class="compare">
-          <table>
-            <thead><tr><th>Feature</th><th>Basic</th><th>Pro</th></tr></thead>
-            <tbody>
-              <tr><td>Core brewing calculations</td><td class="yes">Included</td><td class="yes">Included</td></tr>
-              <tr><td>Recipe design</td><td class="yes">Included</td><td class="yes">Included</td></tr>
-              <tr><td>Save / import JSON</td><td class="no">Locked</td><td class="yes">Included</td></tr>
-              <tr><td>Cloud recipe library</td><td class="no">Locked</td><td class="yes">Included</td></tr>
-              <tr><td>Theme presets</td><td class="no">Locked</td><td class="yes">Included</td></tr>
-              <tr><td>Custom logo / branding</td><td class="no">Locked</td><td class="yes">Included</td></tr>
-              <tr><td>Ingredient library editing</td><td class="no">Locked</td><td class="yes">Included</td></tr>
-              <tr><td>PDF export</td><td class="no">Watermarked</td><td class="yes">No watermark</td></tr>
-              <tr><td>Taproom Pro tools</td><td class="no">Limited</td><td class="yes">Unlimited taps, keg tracking, ratings, branding</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="wrap">
-        <div class="cta">
-          <div>
-            <h2>Start free today. Unlock Pro when you want the full experience.</h2>
-            <p>EZ Brew Day gives brewers an easy entry point, while Pro adds the saved data, customization, and public-facing polish that makes the app feel like a real brewing platform.</p>
-          </div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap">
-            <a class="btn btn-primary" href="https://ezbrewday.netlify.app" target="_blank" rel="noopener">Start Free</a>
-            <a class="btn btn-accent" href="https://buy.stripe.com/3cI8wQfrn31r8gj3sj3wQ03" target="_blank" rel="noopener">Get Pro Annual</a>
-            <a class="btn btn-secondary" href="https://buy.stripe.com/14A14ofrncC1gMPfb13wQ02" target="_blank" rel="noopener">Get Pro Monthly</a>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <div class="wrap footer-row">
-      <div>EZ Brew Day — Brew smarter.</div>
-      <div>Standalone marketing page with live app and Stripe links.</div>
-    </div>
-  </footer>
 </body>
 </html>
