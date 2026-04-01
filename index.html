@@ -1170,6 +1170,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
 </div>
 
 
+
 <div class="modal-overlay" id="upgrade-overlay" aria-hidden="true">
   <div class="modal-card">
     <div class="modal-head">
@@ -1194,7 +1195,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
           </div>
         </div>
         <div class="card">
-          <div class="card-hd"><div class="card-title">Pro Version</div></div><div class="card-body" style="padding-bottom:0"><div class="notebox">Hosted at app.ezbrewday.com</div></div>
+          <div class="card-hd"><div class="card-title">Brewday Pro</div></div>
           <div class="card-body">
             <div class="cline"><span>Everything in Free</span><span class="badge badge-ok">Included</span></div>
             <div class="cline"><span>Save / Import JSON</span><span class="badge badge-ok">Included</span></div>
@@ -1204,12 +1205,15 @@ button[onclick="connectSupabase(true)"]{display:none!important}
             <div class="cline"><span>Ingredient library editing</span><span class="badge badge-ok">Included</span></div>
             <div class="cline"><span>Clean PDF export</span><span class="badge badge-ok">No watermark</span></div>
             <div class="sep"></div>
-            <div class="notebox">To activate Pro in this build, enter a valid license key from the license dialog.</div>
-            <div class="sep"></div>
-            <div class="ctotal"><span>Pro Subscription</span><span class="cval">1 Year</span></div>
+            <div class="ctotal"><span>Choose Your Pro Plan</span><span class="cval">Monthly or Yearly</span></div>
             <div class="helper">After purchase, create an account or sign in with the same email you used at checkout. Brewday will unlock Pro automatically if your subscription is active.</div>
-            <div style="margin-top:12px" class="inline-actions">
-              <button class="btn btn-primary btn-sm" type="button" onclick="startProCheckout()">Buy Pro on Stripe</button>
+            <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px">
+              <button class="btn btn-primary" type="button" onclick="startMonthlyCheckout()" style="justify-content:center;font-size:14px;padding:10px 12px">
+                💳 Monthly – $5/month
+              </button>
+              <button class="btn btn-ghost" type="button" onclick="startYearlyCheckout()" style="justify-content:center;font-size:14px;padding:10px 12px">
+                ⭐ Yearly – $45/year (Save 25%)
+              </button>
             </div>
           </div>
         </div>
@@ -4319,7 +4323,8 @@ async function handleJsonImport(event){
 }
 
 
-const STRIPE_PRO_LINK='https://buy.stripe.com/4gM28sdjf9pP2VZe6X3wQ00';
+const STRIPE_MONTHLY_LINK='https://buy.stripe.com/14A14ofrncC1gMPfb13wQ02';
+const STRIPE_YEARLY_LINK='https://buy.stripe.com/3cI8wQfrn31r8gj3sj3wQ03';
 const BUY_BRETT_A_BEER_LINK='https://buy.stripe.com/cNifZigvrbxXfIL4wn3wQ01';
 const APP_WEBSITE_DOMAIN='app.ezbrewday.com';
 
@@ -4377,12 +4382,19 @@ function isProUser(){return !!licenseState.valid || isServerProActive()}
 function showUpgradeModal(){document.getElementById('upgrade-overlay')?.classList.add('show')}
 function closeUpgradeModal(){document.getElementById('upgrade-overlay')?.classList.remove('show')}
 function startBeerCheckout(){ window.open(BUY_BRETT_A_BEER_LINK,'_blank','noopener,noreferrer'); }
-function startProCheckout(){
+function storeCheckoutEmail(){
   const email=(cloudState&&cloudState.user&&cloudState.user.email)||document.getElementById('cloud-email')?.value||document.getElementById('license-email-input')?.value||'';
   if(email){
     try{localStorage.setItem('ezbd_last_checkout_email',email)}catch(e){}
   }
-  window.open(STRIPE_PRO_LINK,'_blank','noopener,noreferrer');
+}
+function startMonthlyCheckout(){
+  storeCheckoutEmail();
+  window.open(STRIPE_MONTHLY_LINK,'_blank','noopener,noreferrer');
+}
+function startYearlyCheckout(){
+  storeCheckoutEmail();
+  window.open(STRIPE_YEARLY_LINK,'_blank','noopener,noreferrer');
 }
 function getProFeatureLabel(feature){
   return ({settings:'Settings + branding',json:'JSON save/import',cloud:'Cloud sync + library',libraries:'Ingredient library editing'})[feature]||'Pro feature'
