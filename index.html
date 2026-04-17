@@ -1103,6 +1103,180 @@ button[onclick="connectSupabase(true)"]{display:none!important}
   margin-top: 2px;
   line-height: 1.3;
 }
+
+/* ══════════════════════════════════════════════
+   COMPREHENSIVE RESPONSIVE ADDITIONS
+   Covers all newer sections (community, tap fields,
+   water fix, TVA, bar display, workflow, theme grid)
+   ══════════════════════════════════════════════ */
+
+/* ── Tap modal field rows ── */
+@media(max-width:768px){
+  .tap-field-row,.tap-field-row3{grid-template-columns:1fr}
+  .tap-board{grid-template-columns:1fr}
+  .tap-stats{grid-template-columns:repeat(2,1fr)}
+  .tap-actions{flex-direction:column}
+  .tap-actions .btn{width:100%}
+  .tap-modal{width:calc(100vw - 16px)}
+  .tap-modal-body{padding:14px}
+}
+
+/* ── Water fix cards ── */
+@media(max-width:600px){
+  .water-fix-grid{grid-template-columns:1fr 1fr!important}
+}
+@media(max-width:380px){
+  .water-fix-grid{grid-template-columns:1fr!important}
+}
+
+/* ── TVA variance grid ── */
+@media(max-width:600px){
+  .tva-grid{grid-template-columns:1fr!important}
+}
+
+/* ── Theme grid ── */
+@media(max-width:480px){
+  .theme-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ── Style generator ── */
+@media(max-width:480px){
+  .gen-grid{grid-template-columns:1fr}
+  .gen-actions{flex-direction:column}
+  .gen-actions .btn{width:100%}
+}
+
+/* ── Community overlay & grid ── */
+@media(max-width:768px){
+  #community-overlay .modal-card{width:calc(100vw - 12px)!important;max-width:100%!important;border-radius:12px}
+  .community-grid{grid-template-columns:1fr!important}
+  .community-preview-grid{grid-template-columns:1fr!important}
+  .community-search-grid{grid-template-columns:1fr!important}
+  .community-facts{grid-template-columns:1fr 1fr}
+  .community-list{max-height:50vh}
+  #community-overlay .modal-head{flex-wrap:wrap;gap:8px}
+  #community-overlay .modal-head>div{flex-wrap:wrap;gap:8px}
+}
+@media(max-width:480px){
+  .community-facts{grid-template-columns:1fr}
+  .community-item-head{flex-direction:column;gap:8px}
+  .community-badges{flex-wrap:wrap}
+}
+
+/* ── Workflow floating panel ── */
+@media(max-width:600px){
+  .wf-float{left:8px;right:8px;bottom:8px;border-radius:10px}
+  .wf-float-content{flex-direction:column;align-items:flex-start;gap:8px}
+  .wf-float-actions{width:100%;justify-content:flex-end}
+  .wf-hero{grid-template-columns:1fr 1fr!important}
+  .wf-settings{grid-template-columns:1fr!important}
+}
+@media(max-width:380px){
+  .wf-hero{grid-template-columns:1fr!important}
+}
+
+/* ── Bar / tap display ── */
+@media(max-width:600px){
+  .tbd-header{padding:12px 16px 10px;flex-wrap:wrap;gap:8px}
+  .tbd-footer{padding:6px 16px;flex-wrap:wrap;gap:4px}
+}
+
+/* ── Public tap page ── */
+@media(max-width:480px){
+  .tpg-header-inner{flex-direction:column;gap:6px;text-align:center}
+  .tpg-back-link{position:static;transform:none;margin-bottom:4px;display:inline-block}
+}
+
+/* ── Stat grid on small phones ── */
+@media(max-width:480px){
+  .g4{grid-template-columns:1fr 1fr!important}
+  .g6{grid-template-columns:repeat(3,1fr)!important}
+  .g3{grid-template-columns:1fr!important}
+}
+
+/* ── Water matrix scroll wrapper ── */
+@media(max-width:768px){
+  .wmat{overflow-x:auto;display:block}
+}
+
+/* ── Param table on small screens ── */
+@media(max-width:600px){
+  .ptbl td:first-child{width:130px;font-size:11.5px}
+  .ptbl td:nth-child(2){width:80px}
+  .ptbl td:nth-child(3),.ptbl td:nth-child(5){display:none}
+  .ptbl td:last-child{font-size:10px}
+}
+
+/* ── Mash step detail ── */
+@media(max-width:480px){
+  .mstep{padding:8px 10px;gap:8px}
+  .mdetail{font-size:11px}
+}
+
+/* ── Style targets grid (tgrid) ── */
+@media(max-width:480px){
+  .tgrid{grid-template-columns:repeat(2,1fr)!important}
+  .tact input{width:48px}
+}
+@media(max-width:360px){
+  .tgrid{grid-template-columns:1fr!important}
+}
+
+/* ── Modal improvements ── */
+@media(max-width:480px){
+  .modal-card{border-radius:10px}
+  .modal-head{padding:10px 12px}
+  .modal-body{padding:10px 12px}
+  .modal-title{font-size:16px!important}
+}
+
+/* ── Saved items ── */
+@media(max-width:480px){
+  .saved-item-actions{width:100%;flex-direction:column}
+  .saved-item-actions .btn{width:100%}
+}
+
+/* ── Inline action buttons ── */
+@media(max-width:480px){
+  .inline-actions{flex-direction:column}
+  .inline-actions .btn{width:100%}
+}
+
+/* ── Cap check cards ── */
+@media(max-width:480px){
+  .capcard{flex-direction:column;align-items:flex-start}
+}
+
+/* ── Header on very small phones ── */
+@media(max-width:360px){
+  .hdr-chips{display:none}
+  .btn-sm{padding:6px 8px;font-size:10.5px}
+}
+
+/* ── Cost lines ── */
+@media(max-width:480px){
+  .ctotal{font-size:13px}
+  .cval{font-size:13px}
+}
+
+/* ── Touch-friendly input sizing (tablets) ── */
+@media(max-width:1024px) and (pointer:coarse){
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    min-height:40px;font-size:14px
+  }
+  .btn{min-height:40px;padding:8px 14px}
+  .btn-sm{min-height:36px;padding:6px 12px}
+  .tab{padding:14px 12px}
+  .addrow{padding:10px}
+  td input[type=number],td input[type=text],td select{min-height:34px}
+  .delbtn{padding:6px 10px;font-size:15px}
+}
+
+/* ── Tap board stats on small phones ── */
+@media(max-width:400px){
+  .tap-stats{grid-template-columns:repeat(2,1fr)}
+  .tap-stat-val{font-size:12px}
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onload="window._pdfReady=true" onerror="window._pdfReady=false">
 
@@ -10703,7 +10877,19 @@ if(_origRefreshProUI){
     .community-status.ok{color:var(--green)}
     .community-status.bad{color:var(--yellow)}
     .community-status.err{color:var(--red)}
-    @media(max-width:980px){.community-grid{grid-template-columns:1fr}}
+    @media(max-width:980px){.community-grid{grid-template-columns:1fr}.community-list{max-height:55vh}}
+    @media(max-width:768px){
+      #community-overlay .modal-card{width:calc(100vw - 12px)!important;max-width:100%!important;border-radius:12px;max-height:96vh}
+      .community-grid{grid-template-columns:1fr!important}
+      .community-preview-grid{grid-template-columns:1fr!important}
+      .community-search-grid{grid-template-columns:1fr!important}
+      .community-list{max-height:45vh}
+    }
+    @media(max-width:480px){
+      .community-facts{grid-template-columns:1fr}
+      .community-item-head{flex-direction:column}
+      .community-item-name{font-size:14px}
+    }
   </style>
 
   <div class="modal-overlay" id="community-overlay" aria-hidden="true">
