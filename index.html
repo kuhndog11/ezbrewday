@@ -1428,15 +1428,21 @@ button[onclick="connectSupabase(true)"]{display:none!important}
           </div>
           <div id="auth-login-form" class="auth-login-form">
           <label class="fl">Email</label>
-          <input type="text" id="cloud-email" placeholder="you@brewery.com">
-          <label class="fl" style="margin-top:10px">Password</label>
-          <input type="password" id="cloud-password" placeholder="At least 6 characters">
-          <div class="inline-actions">
-            <button class="btn btn-primary btn-sm" type="button" onclick="signInCloud()">Sign In</button>
-            <button class="btn btn-ghost btn-sm" id="cloud-create-account-btn" type="button" onclick="signUpCloud()">Create Account</button>
-            
+          <input type="text" id="cloud-email" placeholder="you@brewery.com" oninput="onLoginEmailInput()">
+          <div id="auth-password-section">
+            <label class="fl" style="margin-top:10px">Password</label>
+            <input type="password" id="cloud-password" placeholder="Password">
           </div>
-          <div class="note-sm" id="account-login-footnote">Free users do not need an account. Existing Pro users can sign in. Create Account only appears right after checkout and must use the same Stripe email.</div></div>
+          <div class="inline-actions" style="flex-wrap:wrap;gap:6px">
+            <button class="btn btn-primary btn-sm" type="button" onclick="signInCloud()">Sign In</button>
+            <button class="btn btn-ghost btn-sm" id="cloud-send-setup-btn" type="button" onclick="sendPasswordSetupEmail()" style="display:none">📧 Send Setup Email</button>
+            <button class="btn btn-ghost btn-sm" id="cloud-create-account-btn" type="button" onclick="signUpCloud()" style="display:none">Create Account</button>
+          </div>
+          <div id="auth-setup-hint" style="display:none;margin-top:8px;padding:9px 11px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.2);border-radius:7px;font-size:11.5px;color:var(--text2);line-height:1.5">
+            ✉️ <strong style="color:var(--teal)">First time here?</strong> If you purchased a Pro license, click <strong>Send Setup Email</strong> to receive a secure link that signs you in and lets you create your password — no guessing needed.
+          </div>
+          <div class="note-sm" id="account-login-footnote" style="margin-top:10px">Sign in with your Pro account email. New customers — click <strong>Send Setup Email</strong> to get your password setup link.</div>
+        </div>
         </div>
       </div>
       <div id="cloud-status" class="cloud-status">Not connected.</div>
@@ -1470,7 +1476,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
         <div id="saved-cloud-equipment-list" class="saved-list"></div>
       </div>
       <div class="notebox" id="login-account-note">
-        Use the same email you used at Stripe checkout. New customers should enter that email, create a password, and click <strong>Create Account</strong>. After that, sign in and Pro will unlock automatically when your subscription is active.
+        Use the email you used at Stripe checkout. New customers: enter your email and click <strong>Send Setup Email</strong> — you'll get a secure link to sign in and set your password. After that, Pro unlocks automatically.
       </div>
     </div>
   </div>
@@ -1493,6 +1499,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
     <img id="brand-logo-display" src="" alt="Logo" style="display:none;max-height:44px;max-width:160px;width:auto;height:auto;object-fit:contain">
     <span class="chip" id="cloud-chip" onclick="showCloudModal()" title="Hosted mode status" style="margin-left:6px">CLOUD · OFFLINE</span>
     <button class="btn btn-primary btn-sm" id="upgrade-pro-btn" onclick="showUpgradeModal()" title="Start your 1-year Brewday Pro subscription" style="margin-left:4px">⭐ Upgrade to Pro</button>
+    <button class="btn btn-ghost btn-sm" id="manage-subscription-btn" onclick="openCustomerPortal()" title="Manage your Pro subscription" style="margin-left:4px;display:none">⚙️ Manage Subscription</button>
   </div>
   <div class="hdr-chips" style="display:none">
   </div>
@@ -4049,27 +4056,23 @@ function refreshCloudModalAccess(){
       : 'Checking Pro access…';
   }
 
-  if(createBtn){
-    createBtn.style.display = canCreate ? '' : 'none';
-  }
+  // "Create Account" is now hidden — accounts are created server-side by Stripe webhook.
+  // Users set their password via the magic link email, not this form.
+  if(createBtn) createBtn.style.display = 'none';
 
   if(subtitle){
-    subtitle.textContent = canCreate
-      ? `Use the same email from Stripe checkout (${checkoutEmail}). If you are new, create a password and click Create Account. Returning Pro users can sign in.`
-      : 'Free users can use EzBrewDay without an account. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.';
+    subtitle.textContent = signedIn
+      ? 'You are signed in.'
+      : 'Sign in with your Pro account email. First time? Click Send Setup Email after entering your address.';
   }
 
   if(info){
     info.style.display = signedIn ? 'none' : 'block';
-    info.innerHTML = canCreate
-      ? `After payment, use the same email from Stripe checkout <strong>${checkoutEmail}</strong>. If you are new, create a password and click <strong>Create Account</strong>. If you already have an account, click <strong>Sign In</strong>.`
-      : 'Free users can keep using EzBrewDay without an account. If you already have a Pro account, sign in below. <strong>Create Account</strong> only appears right after checkout and must use the same Stripe email.';
+    info.innerHTML = 'Enter your email and password to sign in. New Pro customers — enter your email and click <strong>Send Setup Email</strong> to receive a sign-in link and set your password.';
   }
 
   if(footnote){
-    footnote.innerHTML = canCreate
-      ? `Stripe checkout email detected: <strong>${checkoutEmail}</strong>. Create Account is only available for that email in this browser session.`
-      : 'Free users do not need an account. Existing Pro users can sign in. Create Account only appears right after checkout and must use the same Stripe email.';
+    footnote.innerHTML = 'Use the email address you used at Stripe checkout. First-time customers click <strong>Send Setup Email</strong> — no password required yet.';
   }
 
   if(note){
@@ -4078,7 +4081,7 @@ function refreshCloudModalAccess(){
       note.textContent='Signed in successfully. Pro is active for this account.';
     }else if(signedIn){
       note.style.display='';
-      note.textContent='Signed in. If this account has an active Pro subscription, Pro features will unlock automatically. If you just subscribed, make sure this account uses the same email as your Stripe checkout.';
+      note.textContent='Signed in. No active Pro subscription found. If you just purchased, wait a moment and refresh, or contact support.';
     }else{
       note.style.display='none';
       note.textContent='';
@@ -4117,6 +4120,63 @@ function saveCloudConfig(){updateCloudStatus('Connection is configured automatic
 async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} cloudState.client=window.supabase.createClient(cfg.url,cfg.anon); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
  return true;
 }catch(e){updateCloudStatus('Connection failed: '+e.message,'bad'); cloudState.connected=false; return false}}
+/** Show/hide the setup-email button as the user types their email */
+function onLoginEmailInput(){
+  const email = (cloudSel('cloud-email')?.value || '').trim();
+  const setupBtn = document.getElementById('cloud-send-setup-btn');
+  const setupHint = document.getElementById('auth-setup-hint');
+  if(setupBtn) setupBtn.style.display = email.includes('@') ? '' : 'none';
+  if(setupHint) setupHint.style.display = email.includes('@') ? '' : 'none';
+}
+
+/**
+ * Sends a Supabase magic link to the entered email.
+ * - If the user already exists → they get a sign-in link; clicking it
+ *   logs them in and they can set a password in Account Settings.
+ * - If no account exists yet → shows a friendly message telling them
+ *   to check their purchase confirmation or contact support.
+ */
+async function sendPasswordSetupEmail(){
+  if(!await connectSupabase(false)) return;
+  const email = (cloudSel('cloud-email')?.value || '').trim().toLowerCase();
+  if(!email || !email.includes('@')){
+    updateCloudStatus('Enter your purchase email address first.','bad');
+    return;
+  }
+  updateCloudStatus('Sending setup email…','');
+  const {error} = await cloudState.client.auth.signInWithOtp({
+    email,
+    options:{
+      shouldCreateUser: false,           // Only works for existing accounts
+      emailRedirectTo: window.location.href
+    }
+  });
+  if(error){
+    // "Email not confirmed" or "User not found" means account doesn't exist yet
+    if(error.message.toLowerCase().includes('not found') ||
+       error.message.toLowerCase().includes('invalid') ||
+       error.message.toLowerCase().includes('no user')){
+      updateCloudStatus(
+        '⚠️ No account found for ' + email +
+        '. Make sure you use the exact email from your Stripe receipt. ' +
+        'If you just purchased, allow a minute and try again.',
+        'bad'
+      );
+    } else {
+      updateCloudStatus('Could not send email: ' + error.message, 'bad');
+    }
+    return;
+  }
+  updateCloudStatus(
+    '✅ Setup email sent to ' + email +
+    '! Check your inbox (and spam folder). Clicking the link will sign you in automatically.',
+    'ok'
+  );
+  // Hide the password field — they don't need it right now
+  const pwSection = document.getElementById('auth-password-section');
+  if(pwSection) pwSection.style.opacity = '0.4';
+}
+
 async function signUpCloud(){
   if(!await connectSupabase(false)) return showCloudModal();
   const email=cloudSel('cloud-email')?.value?.trim()||'';
@@ -4594,7 +4654,12 @@ async function handleJsonImport(event){
 const STRIPE_MONTHLY_LINK='https://buy.stripe.com/14A14ofrncC1gMPfb13wQ02';
 const STRIPE_YEARLY_LINK='https://buy.stripe.com/3cI8wQfrn31r8gj3sj3wQ03';
 const BUY_BRETT_A_BEER_LINK='https://buy.stripe.com/cNifZigvrbxXfIL4wn3wQ01';
+const STRIPE_CUSTOMER_PORTAL='https://billing.stripe.com/p/login/4gM28sdjf9pP2VZe6X3wQ00';
 const APP_WEBSITE_DOMAIN='app.ezbrewday.com';
+
+function openCustomerPortal(){
+  window.open(STRIPE_CUSTOMER_PORTAL,'_blank','noopener,noreferrer');
+}
 
 function getStoredCheckoutEmail(){
   try{
@@ -4787,25 +4852,32 @@ function refreshProUI(){
   forceUnlockCommunity();
 
   const upBtn=document.getElementById('upgrade-pro-btn');
+  const manageBtn=document.getElementById('manage-subscription-btn');
   if(upBtn){
     const server=cloudState.proLicense;
     const expiry=server?.expires_at?formatProExpiry(server.expires_at):'';
     const expiredButPresent=!!(server && !server.active && server.expired);
     if(pro){
-      upBtn.textContent=server?.active?`✅ Pro Active${expiry?' · Expires '+expiry:''}`:'✅ Pro Active';
-      upBtn.classList.add('btn-ghost');
-      upBtn.classList.remove('btn-primary');
-      upBtn.setAttribute('onclick',"showCloudModal()");
+      // Hide upgrade button, show manage subscription button
+      upBtn.style.display='none';
+      if(manageBtn){
+        manageBtn.style.display='';
+        manageBtn.textContent=server?.active?`⚙️ Manage Subscription${expiry?' · Expires '+expiry:''}`:'⚙️ Manage Subscription';
+      }
     }else if(expiredButPresent){
+      upBtn.style.display='';
       upBtn.textContent=`🔄 Renew Pro${expiry?' · Expired '+expiry:''}`;
       upBtn.classList.add('btn-primary');
       upBtn.classList.remove('btn-ghost');
       upBtn.setAttribute('onclick',"showUpgradeModal()");
+      if(manageBtn) manageBtn.style.display='none';
     }else{
+      upBtn.style.display='';
       upBtn.textContent='⭐ Upgrade to Pro';
       upBtn.classList.add('btn-primary');
       upBtn.classList.remove('btn-ghost');
       upBtn.setAttribute('onclick',"showUpgradeModal()");
+      if(manageBtn) manageBtn.style.display='none';
     }
   }
 }
