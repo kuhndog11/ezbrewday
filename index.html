@@ -1483,6 +1483,33 @@ button[onclick="connectSupabase(true)"]{display:none!important}
 </div>
 
 
+<!-- PASSWORD SETUP MODAL — shown automatically when user clicks recovery link from email -->
+<div class="modal-overlay" id="password-setup-overlay" aria-hidden="true" style="z-index:1200">
+  <div class="modal-card" style="max-width:420px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">🎉 Welcome to EzBrewDay Pro!</div>
+        <div class="hdr-sub">Create your password to finish setting up your account.</div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--teal3);border:1px solid rgba(20,184,166,.2);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:var(--text2);line-height:1.5">
+        ✅ Your Pro license is active. Just set a password below and you're all set — you'll use this every time you sign in.
+      </div>
+      <label class="fl">Email</label>
+      <input type="text" id="setup-email" disabled style="opacity:.6;margin-bottom:12px">
+      <label class="fl">New Password</label>
+      <input type="password" id="setup-password" placeholder="At least 6 characters" style="margin-bottom:10px">
+      <label class="fl">Confirm Password</label>
+      <input type="password" id="setup-password-confirm" placeholder="Repeat your password" style="margin-bottom:14px">
+      <div class="inline-actions">
+        <button class="btn btn-primary" type="button" onclick="submitPasswordSetup()" style="width:100%;justify-content:center;padding:10px">Set Password &amp; Start Brewing</button>
+      </div>
+      <div id="setup-status" class="cloud-status" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
 <!-- HEADER -->
 <header class="hdr">
   <div class="hdr-logo" style="display:flex;align-items:center;gap:12px">
@@ -3012,7 +3039,84 @@ let workflowSteps=[],workflowState={index:0,remaining:0,running:!1,timer:null,st
   else { startWorkflow(); }
 }
 
-function blobDownload(e,t){const a=URL.createObjectURL(e),n=document.createElement("a");n.href=a,n.download=t,n.style.display="none",document.body.appendChild(n),n.click(),setTimeout(()=>{URL.revokeObjectURL(a),n.remove()},1e3)}document.addEventListener("DOMContentLoaded",()=>{const e=document.getElementById("license-key-input");e&&(e.addEventListener("input",e=>{e.target.value=licensePrettyKey(e.target.value)}),e.addEventListener("keydown",e=>{"Enter"===e.key&&activateLicense()})),init();forceUnlockCommunity();});
+function blobDownload(e,t){const a=URL.createObjectURL(e),n=document.createElement("a");n.href=a,n.download=t,n.style.display="none",document.body.appendChild(n),n.click(),setTimeout(()=>{URL.revokeObjectURL(a),n.remove()},1e3)}document.addEventListener("DOMContentLoaded",()=>{const e=document.getElementById("license-key-input");e&&(e.addEventListener("input",e=>{e.target.value=licensePrettyKey(e.target.value)}),e.addEventListener("keydown",e=>{"Enter"===e.key&&activateLicense()})),init();forceUnlockCommunity();
+
+  // ── PASSWORD SETUP: check if user landed here from a recovery email link ──
+  // Supabase puts #access_token=...&type=recovery in the URL after they click
+  // the link in their email. We catch it here and show the setup modal.
+  checkForPasswordRecovery();
+});
+
+/** Called on page load — detects a Supabase recovery link in the URL hash */
+async function checkForPasswordRecovery(){
+  const hash = window.location.hash;
+  if(!hash || !hash.includes('type=recovery')) return;
+
+  // Parse the token from the hash
+  const params = new URLSearchParams(hash.replace('#',''));
+  const accessToken  = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if(!accessToken) return;
+
+  // Clear the hash from the URL so it doesn't linger
+  window.history.replaceState(null,'',window.location.pathname);
+
+  // Connect to Supabase and set the session using the tokens from the link
+  await connectSupabase(false);
+  if(!cloudState.client) return;
+
+  const { data, error } = await cloudState.client.auth.setSession({
+    access_token:  accessToken,
+    refresh_token: refreshToken || '',
+  });
+
+  if(error || !data?.user){
+    console.warn('Could not restore session from recovery link:', error?.message);
+    return;
+  }
+
+  // Session is live — show the password setup modal
+  cloudState.user = data.user;
+  const emailEl = document.getElementById('setup-email');
+  if(emailEl) emailEl.value = data.user.email || '';
+  document.getElementById('password-setup-overlay')?.classList.add('show');
+}
+
+/** Handles the "Set Password" button in the setup modal */
+async function submitPasswordSetup(){
+  const pw  = document.getElementById('setup-password')?.value || '';
+  const pw2 = document.getElementById('setup-password-confirm')?.value || '';
+  const status = document.getElementById('setup-status');
+
+  if(pw.length < 6){
+    if(status){ status.textContent='Password must be at least 6 characters.'; status.className='cloud-status bad'; }
+    return;
+  }
+  if(pw !== pw2){
+    if(status){ status.textContent="Passwords don't match."; status.className='cloud-status bad'; }
+    return;
+  }
+
+  if(status){ status.textContent='Saving…'; status.className='cloud-status'; }
+
+  const { error } = await cloudState.client.auth.updateUser({ password: pw });
+
+  if(error){
+    if(status){ status.textContent='Error: ' + error.message; status.className='cloud-status bad'; }
+    return;
+  }
+
+  // Password set — close modal, finish signing in
+  if(status){ status.textContent='✅ Password saved!'; status.className='cloud-status ok'; }
+  setTimeout(async ()=>{
+    document.getElementById('password-setup-overlay')?.classList.remove('show');
+    await refreshServerProStatus(false);
+    renderLicenseSupportState();
+    refreshCloudModalAccess();
+    refreshProUI();
+    forceUnlockCommunity();
+  }, 800);
+}
 </script>
 
 <!-- ═══════ LIBRARY: WATER PROFILES ═══════ -->
