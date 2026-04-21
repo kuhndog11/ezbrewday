@@ -3111,7 +3111,7 @@ function blobDownload(e,t){const a=URL.createObjectURL(e),n=document.createEleme
   // Supabase puts #access_token=...&type=recovery in the URL after they click
   // the link in their email. We catch it here and show the setup modal.
   // Delay recovery check to avoid Supabase auth lock race condition
-  setTimeout(checkForPasswordRecovery, 1500);
+  setTimeout(checkForPasswordRecovery, 2500);
 });
 
 /** Called on page load — detects a Supabase recovery link in the URL hash */
@@ -3150,7 +3150,10 @@ async function checkForPasswordRecovery(){
   // Clear URL immediately so tokens don't linger
   window.history.replaceState(null,'',window.location.pathname);
 
-  await connectSupabase(false);
+  // Use existing client if available — do NOT create a new one (causes lock conflicts)
+  if(!cloudState.client){
+    await connectSupabase(false);
+  }
   if(!cloudState.client){ showSetupExpiredPanel(); return; }
 
   let user = null;
