@@ -2595,11 +2595,6 @@ button[onclick="connectSupabase(true)"]{display:none!important}
 // Capture recovery hash immediately before any code can clear it
 window.__recoveryHash = window.location.hash || '';
 window.__recoverySearch = window.location.search || '';
-// Also extract the access token for direct REST API use (avoids lock issues)
-try {
-  const __hp = new URLSearchParams((window.__recoveryHash||'').replace('#',''));
-  window.__setupAccessToken = __hp.get('access_token') || '';
-} catch(e) { window.__setupAccessToken = ''; }
 
 const LICENSE_STORAGE_KEY="ezbd_license_key_v1",LICENSE_PRODUCT_CODE="EBD",LICENSE_SECRET="EzBrewDayPro_2026",licenseState={valid:!1,key:"",seed:"",email:"",lastMessage:""};function licenseNormalizeKey(e){return String(e||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}function licensePrettyKey(e){const t=licenseNormalizeKey(e);if(!t)return"";const a=t.startsWith(LICENSE_PRODUCT_CODE)?t.slice(3):t,n=a.slice(0,16).match(/.{1,4}/g)?.join("-")||a.slice(0,16);return`${LICENSE_PRODUCT_CODE}-${n}`}function licenseHash(e){let t=2166136261;for(let a=0;a<e.length;a++)t^=e.charCodeAt(a),t=Math.imul(t,16777619);return(t>>>0).toString(36).toUpperCase().padStart(8,"0")}function licenseSeedFromOwner(e){return(String(e||"OWNER").trim().toUpperCase().replace(/[^A-Z0-9]/g,"")||"OWNER").slice(0,4).padEnd(4,"X")}
 function normalizeLicenseEmail(v){return String(v||'').trim().toLowerCase()}
@@ -3261,35 +3256,7 @@ async function submitPasswordSetup(){
   const btn = document.querySelector('#setup-form-panel .btn-primary');
   if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
 
-  // Use the access token from the recovery link directly via REST API
-  // This avoids the Supabase JS client lock deadlock issue
-  const accessToken = (window.__setupAccessToken || '');
-  const cfg = getCloudConfig();
-  let saveError = null;
-
-  if(accessToken && cfg.url){
-    try {
-      const resp = await fetch(cfg.url + '/auth/v1/user', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + accessToken,
-          'apikey': cfg.anon
-        },
-        body: JSON.stringify({ password: pw })
-      });
-      const result = await resp.json();
-      if(!resp.ok) saveError = { message: result.msg || result.error_description || 'Failed to save password' };
-    } catch(e) {
-      saveError = { message: e.message };
-    }
-  } else {
-    // Fallback to Supabase JS client
-    const { error } = await cloudState.client.auth.updateUser({ password: pw });
-    saveError = error;
-  }
-
-  const error = saveError;
+  const { error } = await cloudState.client.auth.updateUser({ password: pw });
 
   if(error){
     if(status){ status.textContent='Error: ' + error.message; status.className='cloud-status bad'; }
