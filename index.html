@@ -3132,21 +3132,16 @@ async function checkForPasswordRecovery(){
   const hash   = window.location.hash;
   const search = window.location.search;
 
-  // Supabase can deliver recovery tokens two ways:
-  // 1. Legacy implicit flow: #access_token=...&type=recovery in the hash
-  // 2. PKCE flow: ?code=... in the query string (handled by exchangeCodeForSession)
-
   const hashParams   = new URLSearchParams(hash.replace('#',''));
   const searchParams = new URLSearchParams(search);
 
-  const isHashRecovery   = hash.includes('type=recovery');
-  const isHashMagicLink  = hash.includes('type=magiclink') || hash.includes('type=signup');
-  const hasCode          = searchParams.has('code');
+  const isHashRecovery  = hash.includes('type=recovery');
+  const isHashMagicLink = hash.includes('type=magiclink') || hash.includes('type=signup');
+  const hasCode         = searchParams.has('code');
 
-  // Nothing auth-related in the URL — bail out silently
   if(!isHashRecovery && !isHashMagicLink && !hasCode) return;
 
-  // Clear URL so tokens don't linger in history
+  // Clear URL immediately so tokens don't linger
   window.history.replaceState(null,'',window.location.pathname);
 
   await connectSupabase(false);
@@ -3155,30 +3150,40 @@ async function checkForPasswordRecovery(){
   let user = null;
 
   if(isHashRecovery || isHashMagicLink){
-    // ── Implicit / legacy flow ──
     const accessToken  = hashParams.get('access_token');
     const refreshToken = hashParams.get('refresh_token') || '';
     if(!accessToken){ showSetupExpiredPanel(); return; }
-    const { data, error } = await cloudState.client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-    if(error || !data?.user){ console.warn('setSession failed:', error?.message); showSetupExpiredPanel(); return; }
+    const { data, error } = await cloudState.client.auth.setSession({
+      access_token:  accessToken,
+      refresh_token: refreshToken
+    });
+    if(error || !data?.user){
+      console.warn('setSession failed:', error?.message);
+      showSetupExpiredPanel();
+      return;
+    }
     user = data.user;
 
   } else if(hasCode){
-    // ── PKCE flow ──
     const { data, error } = await cloudState.client.auth.exchangeCodeForSession(search);
-    if(error || !data?.user){ console.warn('exchangeCodeForSession failed:', error?.message); showSetupExpiredPanel(); return; }
+    if(error || !data?.user){
+      console.warn('exchangeCodeForSession failed:', error?.message);
+      showSetupExpiredPanel();
+      return;
+    }
     user = data.user;
   }
 
   if(!user){ showSetupExpiredPanel(); return; }
 
-  // Session is live — show the password setup form
   cloudState.user = user;
   const emailEl = document.getElementById('setup-email');
   if(emailEl) emailEl.value = user.email || '';
   const expiredEmailEl = document.getElementById('setup-expired-email');
   if(expiredEmailEl) expiredEmailEl.value = user.email || '';
-  showSetupFormPanel();
+
+  // Small delay to ensure app is fully initialized before showing modal
+  setTimeout(showSetupFormPanel, 300);
 }
 
 function showSetupFormPanel(){
