@@ -4381,7 +4381,7 @@ async function showCloudLibrary(){
 function showCloudModal(){document.getElementById('cloud-overlay')?.classList.add('show'); refreshCloudModalAccess();}
 function closeCloudModal(){document.getElementById('cloud-overlay')?.classList.remove('show');}
 function saveCloudConfig(){updateCloudStatus('Connection is configured automatically.','ok'); connectSupabase(true)}
-async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} // Use memory storage if localStorage is blocked (e.g. Edge tracking prevention)
+async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} if(cloudState.client){ const {data}=await cloudState.client.auth.getUser(); cloudState.user=data?.user||null; if(cloudState.user&&showMsg) updateCloudStatus('Connected as '+cloudState.user.email,'ok'); return true;} // Use memory storage if localStorage is blocked (e.g. Edge tracking prevention)
 let sbStorage = undefined;
 try { localStorage.setItem('__sb_test','1'); localStorage.removeItem('__sb_test'); }
 catch(e) { sbStorage = { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} }; }
@@ -11661,3 +11661,5 @@ if(_origRefreshProUI){
 
 </body>
 </html>
+
+                                            
