@@ -3110,8 +3110,16 @@ function blobDownload(e,t){const a=URL.createObjectURL(e),n=document.createEleme
   // ── PASSWORD SETUP: check if user landed here from a recovery email link ──
   // Supabase puts #access_token=...&type=recovery in the URL after they click
   // the link in their email. We catch it here and show the setup modal.
-  // Delay recovery check to avoid Supabase auth lock race condition
-  setTimeout(checkForPasswordRecovery, 2500);
+  // If landing from a recovery email link, auto-connect Supabase immediately
+  // so the auth state change listener can fire and show the setup modal.
+  if((window.__recoveryHash || '').includes('type=recovery') ||
+     (window.__recoverySearch || '').includes('code=')){
+    connectSupabase(false).then(() => {
+      setTimeout(checkForPasswordRecovery, 500);
+    });
+  } else {
+    setTimeout(checkForPasswordRecovery, 2500);
+  }
 });
 
 /** Called on page load — detects a Supabase recovery link in the URL hash */
