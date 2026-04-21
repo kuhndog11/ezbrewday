@@ -2592,6 +2592,10 @@ button[onclick="connectSupabase(true)"]{display:none!important}
 </div>
 
 <script>
+// Capture recovery hash immediately before any code can clear it
+window.__recoveryHash = window.location.hash || '';
+window.__recoverySearch = window.location.search || '';
+
 const LICENSE_STORAGE_KEY="ezbd_license_key_v1",LICENSE_PRODUCT_CODE="EBD",LICENSE_SECRET="EzBrewDayPro_2026",licenseState={valid:!1,key:"",seed:"",email:"",lastMessage:""};function licenseNormalizeKey(e){return String(e||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}function licensePrettyKey(e){const t=licenseNormalizeKey(e);if(!t)return"";const a=t.startsWith(LICENSE_PRODUCT_CODE)?t.slice(3):t,n=a.slice(0,16).match(/.{1,4}/g)?.join("-")||a.slice(0,16);return`${LICENSE_PRODUCT_CODE}-${n}`}function licenseHash(e){let t=2166136261;for(let a=0;a<e.length;a++)t^=e.charCodeAt(a),t=Math.imul(t,16777619);return(t>>>0).toString(36).toUpperCase().padStart(8,"0")}function licenseSeedFromOwner(e){return(String(e||"OWNER").trim().toUpperCase().replace(/[^A-Z0-9]/g,"")||"OWNER").slice(0,4).padEnd(4,"X")}
 function normalizeLicenseEmail(v){return String(v||'').trim().toLowerCase()}
 function emailSeedFromValue(v){const e=normalizeLicenseEmail(v);return licenseHash('EMAIL|'+e).slice(0,4)}
@@ -3106,7 +3110,8 @@ function blobDownload(e,t){const a=URL.createObjectURL(e),n=document.createEleme
   // ── PASSWORD SETUP: check if user landed here from a recovery email link ──
   // Supabase puts #access_token=...&type=recovery in the URL after they click
   // the link in their email. We catch it here and show the setup modal.
-  checkForPasswordRecovery();
+  // Delay recovery check to avoid Supabase auth lock race condition
+  setTimeout(checkForPasswordRecovery, 1500);
 });
 
 /** Called on page load — detects a Supabase recovery link in the URL hash */
@@ -3129,8 +3134,9 @@ function setupPasswordStrength(){
 
 /** Called on page load — detects a Supabase recovery link in the URL hash */
 async function checkForPasswordRecovery(){
-  const hash   = window.location.hash;
-  const search = window.location.search;
+  // Use the hash/search captured at page load before Supabase could clear them
+  const hash   = window.__recoveryHash || window.location.hash;
+  const search = window.__recoverySearch || window.location.search;
 
   const hashParams   = new URLSearchParams(hash.replace('#',''));
   const searchParams = new URLSearchParams(search);
