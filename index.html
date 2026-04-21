@@ -1417,7 +1417,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
       <div class="modal-grid" id="cloud-auth-grid">
         <div id="cloud-config-block" class="hidden"></div>
         <div>
-          <div class="notebox" id="account-login-note" style="margin-bottom:12px">Free users can keep using EzBrewDay without an account. If you already have a Pro account, sign in below. Create Account only appears right after checkout and must use the same Stripe email.</div>
+          <div class="notebox" id="account-login-note" style="margin-bottom:12px">Sign in with your Pro account email and password. If you forgot your password, click <strong>Forgot Password</strong> below to get a reset link.</div>
           <div id="auth-signed-in-summary" class="auth-signed-in-summary">
             <div style="font-weight:700;color:var(--text);margin-bottom:4px">Signed in</div>
             <div class="email" id="auth-signed-in-email">—</div>
@@ -1435,13 +1435,13 @@ button[onclick="connectSupabase(true)"]{display:none!important}
           </div>
           <div class="inline-actions" style="flex-wrap:wrap;gap:6px">
             <button class="btn btn-primary btn-sm" type="button" onclick="signInCloud()">Sign In</button>
-            <button class="btn btn-ghost btn-sm" id="cloud-send-setup-btn" type="button" onclick="sendPasswordSetupEmail()" style="display:none">📧 Send Setup Email</button>
+            <button class="btn btn-ghost btn-sm" id="cloud-send-setup-btn" type="button" onclick="sendPasswordSetupEmail()" style="display:none">🔑 Forgot Password</button>
             <button class="btn btn-ghost btn-sm" id="cloud-create-account-btn" type="button" onclick="signUpCloud()" style="display:none">Create Account</button>
           </div>
           <div id="auth-setup-hint" style="display:none;margin-top:8px;padding:9px 11px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.2);border-radius:7px;font-size:11.5px;color:var(--text2);line-height:1.5">
-            ✉️ <strong style="color:var(--teal)">First time here?</strong> If you purchased a Pro license, click <strong>Send Setup Email</strong> to receive a secure link that signs you in and lets you create your password — no guessing needed.
+            🔑 <strong style="color:var(--teal)">Forgot your password?</strong> Enter your email above and click <strong>Forgot Password</strong> — we'll send you a secure reset link right away.
           </div>
-          <div class="note-sm" id="account-login-footnote" style="margin-top:10px">Sign in with your Pro account email. New customers — click <strong>Send Setup Email</strong> to get your password setup link.</div>
+          <div class="note-sm" id="account-login-footnote" style="margin-top:10px">Use the email address you used at Stripe checkout.</div>
         </div>
         </div>
       </div>
@@ -1476,7 +1476,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
         <div id="saved-cloud-equipment-list" class="saved-list"></div>
       </div>
       <div class="notebox" id="login-account-note">
-        Use the email you used at Stripe checkout. New customers: enter your email and click <strong>Send Setup Email</strong> — you'll get a secure link to sign in and set your password. After that, Pro unlocks automatically.
+        Use the email address from your Stripe receipt. If you haven't set a password yet, check your inbox for the setup email we sent after purchase — or click <strong>Forgot Password</strong> to get a new link.
       </div>
     </div>
   </div>
@@ -4360,16 +4360,16 @@ function refreshCloudModalAccess(){
   if(subtitle){
     subtitle.textContent = signedIn
       ? 'You are signed in.'
-      : 'Sign in with your Pro account email. First time? Click Send Setup Email after entering your address.';
+      : 'Sign in with your Pro account email and password. Forgot your password? Enter your email and click Forgot Password.';
   }
 
   if(info){
     info.style.display = signedIn ? 'none' : 'block';
-    info.innerHTML = 'Enter your email and password to sign in. New Pro customers — enter your email and click <strong>Send Setup Email</strong> to receive a sign-in link and set your password.';
+    info.innerHTML = 'Sign in with your Pro account email and password. Forgot your password? Enter your email and click <strong>Forgot Password</strong> to get a reset link.';
   }
 
   if(footnote){
-    footnote.innerHTML = 'Use the email address you used at Stripe checkout. First-time customers click <strong>Send Setup Email</strong> — no password required yet.';
+    footnote.innerHTML = 'Use the email address from your Stripe receipt.';
   }
 
   if(note){
