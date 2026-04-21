@@ -3110,16 +3110,8 @@ function blobDownload(e,t){const a=URL.createObjectURL(e),n=document.createEleme
   // ── PASSWORD SETUP: check if user landed here from a recovery email link ──
   // Supabase puts #access_token=...&type=recovery in the URL after they click
   // the link in their email. We catch it here and show the setup modal.
-  // If landing from a recovery email link, auto-connect Supabase immediately
-  // so the auth state change listener can fire and show the setup modal.
-  if((window.__recoveryHash || '').includes('type=recovery') ||
-     (window.__recoverySearch || '').includes('code=')){
-    connectSupabase(false).then(() => {
-      setTimeout(checkForPasswordRecovery, 500);
-    });
-  } else {
-    setTimeout(checkForPasswordRecovery, 2500);
-  }
+  // Delay recovery check to avoid Supabase auth lock race condition
+  setTimeout(checkForPasswordRecovery, 2500);
 });
 
 /** Called on page load — detects a Supabase recovery link in the URL hash */
@@ -4381,11 +4373,7 @@ async function showCloudLibrary(){
 function showCloudModal(){document.getElementById('cloud-overlay')?.classList.add('show'); refreshCloudModalAccess();}
 function closeCloudModal(){document.getElementById('cloud-overlay')?.classList.remove('show');}
 function saveCloudConfig(){updateCloudStatus('Connection is configured automatically.','ok'); connectSupabase(true)}
-async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} if(cloudState.client){ const {data}=await cloudState.client.auth.getUser(); cloudState.user=data?.user||null; if(cloudState.user&&showMsg) updateCloudStatus('Connected as '+cloudState.user.email,'ok'); return true;} // Use memory storage if localStorage is blocked (e.g. Edge tracking prevention)
-let sbStorage = undefined;
-try { localStorage.setItem('__sb_test','1'); localStorage.removeItem('__sb_test'); }
-catch(e) { sbStorage = { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} }; }
-cloudState.client=window.supabase.createClient(cfg.url,cfg.anon, sbStorage ? {auth:{storage:sbStorage,storageKey:'sb-'+cfg.url+'-auth-token',autoRefreshToken:true,persistSession:false,detectSessionInUrl:true}} : {auth:{detectSessionInUrl:true}}); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && (window.__recoveryHash||'').includes('type=recovery') && session?.user){ window.__recoveryHash=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
+async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} cloudState.client=window.supabase.createClient(cfg.url,cfg.anon); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && (window.__recoveryHash||'').includes('type=recovery') && session?.user){ window.__recoveryHash=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
  return true;
 }catch(e){updateCloudStatus('Connection failed: '+e.message,'bad'); cloudState.connected=false; return false}}
 /** Show/hide the setup-email button as the user types their email */
