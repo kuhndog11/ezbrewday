@@ -2595,6 +2595,11 @@ button[onclick="connectSupabase(true)"]{display:none!important}
 // Capture recovery hash immediately before any code can clear it
 window.__recoveryHash = window.location.hash || '';
 window.__recoverySearch = window.location.search || '';
+// Also extract the access token for direct REST API use (avoids lock issues)
+try {
+  const __hp = new URLSearchParams((window.__recoveryHash||'').replace('#',''));
+  window.__setupAccessToken = __hp.get('access_token') || '';
+} catch(e) { window.__setupAccessToken = ''; }
 
 const LICENSE_STORAGE_KEY="ezbd_license_key_v1",LICENSE_PRODUCT_CODE="EBD",LICENSE_SECRET="EzBrewDayPro_2026",licenseState={valid:!1,key:"",seed:"",email:"",lastMessage:""};function licenseNormalizeKey(e){return String(e||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}function licensePrettyKey(e){const t=licenseNormalizeKey(e);if(!t)return"";const a=t.startsWith(LICENSE_PRODUCT_CODE)?t.slice(3):t,n=a.slice(0,16).match(/.{1,4}/g)?.join("-")||a.slice(0,16);return`${LICENSE_PRODUCT_CODE}-${n}`}function licenseHash(e){let t=2166136261;for(let a=0;a<e.length;a++)t^=e.charCodeAt(a),t=Math.imul(t,16777619);return(t>>>0).toString(36).toUpperCase().padStart(8,"0")}function licenseSeedFromOwner(e){return(String(e||"OWNER").trim().toUpperCase().replace(/[^A-Z0-9]/g,"")||"OWNER").slice(0,4).padEnd(4,"X")}
 function normalizeLicenseEmail(v){return String(v||'').trim().toLowerCase()}
@@ -3110,8 +3115,16 @@ function blobDownload(e,t){const a=URL.createObjectURL(e),n=document.createEleme
   // ── PASSWORD SETUP: check if user landed here from a recovery email link ──
   // Supabase puts #access_token=...&type=recovery in the URL after they click
   // the link in their email. We catch it here and show the setup modal.
-  // Delay recovery check to avoid Supabase auth lock race condition
-  setTimeout(checkForPasswordRecovery, 2500);
+  // If landing from a recovery email link, auto-connect Supabase immediately
+  // so the auth state change listener can fire and show the setup modal.
+  if((window.__recoveryHash || '').includes('type=recovery') ||
+     (window.__recoverySearch || '').includes('code=')){
+    connectSupabase(false).then(() => {
+      setTimeout(checkForPasswordRecovery, 500);
+    });
+  } else {
+    setTimeout(checkForPasswordRecovery, 2500);
+  }
 });
 
 /** Called on page load — detects a Supabase recovery link in the URL hash */
@@ -3248,7 +3261,35 @@ async function submitPasswordSetup(){
   const btn = document.querySelector('#setup-form-panel .btn-primary');
   if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
 
-  const { error } = await cloudState.client.auth.updateUser({ password: pw });
+  // Use the access token from the recovery link directly via REST API
+  // This avoids the Supabase JS client lock deadlock issue
+  const accessToken = (window.__setupAccessToken || '');
+  const cfg = getCloudConfig();
+  let saveError = null;
+
+  if(accessToken && cfg.url){
+    try {
+      const resp = await fetch(cfg.url + '/auth/v1/user', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + accessToken,
+          'apikey': cfg.anon
+        },
+        body: JSON.stringify({ password: pw })
+      });
+      const result = await resp.json();
+      if(!resp.ok) saveError = { message: result.msg || result.error_description || 'Failed to save password' };
+    } catch(e) {
+      saveError = { message: e.message };
+    }
+  } else {
+    // Fallback to Supabase JS client
+    const { error } = await cloudState.client.auth.updateUser({ password: pw });
+    saveError = error;
+  }
+
+  const error = saveError;
 
   if(error){
     if(status){ status.textContent='Error: ' + error.message; status.className='cloud-status bad'; }
@@ -4373,7 +4414,11 @@ async function showCloudLibrary(){
 function showCloudModal(){document.getElementById('cloud-overlay')?.classList.add('show'); refreshCloudModalAccess();}
 function closeCloudModal(){document.getElementById('cloud-overlay')?.classList.remove('show');}
 function saveCloudConfig(){updateCloudStatus('Connection is configured automatically.','ok'); connectSupabase(true)}
-async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} cloudState.client=window.supabase.createClient(cfg.url,cfg.anon); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && (window.__recoveryHash||'').includes('type=recovery') && session?.user){ window.__recoveryHash=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
+async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} if(cloudState.client){ const {data}=await cloudState.client.auth.getUser(); cloudState.user=data?.user||null; if(cloudState.user&&showMsg) updateCloudStatus('Connected as '+cloudState.user.email,'ok'); return true;} // Use memory storage if localStorage is blocked (e.g. Edge tracking prevention)
+let sbStorage = undefined;
+try { localStorage.setItem('__sb_test','1'); localStorage.removeItem('__sb_test'); }
+catch(e) { sbStorage = { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} }; }
+cloudState.client=window.supabase.createClient(cfg.url,cfg.anon, sbStorage ? {auth:{storage:sbStorage,storageKey:'sb-'+cfg.url+'-auth-token',autoRefreshToken:true,persistSession:false,detectSessionInUrl:true}} : {auth:{detectSessionInUrl:true}}); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && (window.__recoveryHash||'').includes('type=recovery') && session?.user){ window.__recoveryHash=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
  return true;
 }catch(e){updateCloudStatus('Connection failed: '+e.message,'bad'); cloudState.connected=false; return false}}
 /** Show/hide the setup-email button as the user types their email */
