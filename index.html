@@ -3119,6 +3119,7 @@ function blobDownload(e,t){const a=URL.createObjectURL(e),n=document.createEleme
   // so the auth state change listener can fire and show the setup modal.
   if((window.__recoveryHash || '').includes('type=recovery') ||
      (window.__recoverySearch || '').includes('code=')){
+    window.__pendingPasswordReset = true;
     connectSupabase(false).then(() => {
       setTimeout(checkForPasswordRecovery, 500);
     });
@@ -3164,21 +3165,28 @@ async function checkForPasswordRecovery(){
   // Supabase JS auto-processes the hash token on init and signs the user in.
   // We just need to wait for cloudState.user to be populated by the normal
   // auth flow, then show the setup modal.
-  // Poll for up to 8 seconds for cloudState.user to be set.
+  // Poll for up to 12 seconds for cloudState.user to be set.
   let user = cloudState.user || null;
   if(!user){
-    for(let i = 0; i < 16; i++){
+    for(let i = 0; i < 24; i++){
       await new Promise(r => setTimeout(r, 500));
       user = cloudState.user || null;
       if(user) break;
+      // Every 2 seconds also try getSession in case auth state change didn't fire
+      if(i % 4 === 3 && cloudState.client){
+        const { data } = await cloudState.client.auth.getSession();
+        user = data?.session?.user || null;
+        if(user){ cloudState.user = user; break; }
+      }
     }
   }
 
   if(!user){
-    // As a last resort try getSession on the existing client
+    // Final fallback: try getSession one more time
     if(cloudState.client){
       const { data } = await cloudState.client.auth.getSession();
       user = data?.session?.user || null;
+      if(user) cloudState.user = user;
     }
   }
 
@@ -4418,7 +4426,7 @@ async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.
 let sbStorage = undefined;
 try { localStorage.setItem('__sb_test','1'); localStorage.removeItem('__sb_test'); }
 catch(e) { sbStorage = { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} }; }
-cloudState.client=window.supabase.createClient(cfg.url,cfg.anon, sbStorage ? {auth:{storage:sbStorage,storageKey:'sb-'+cfg.url+'-auth-token',autoRefreshToken:true,persistSession:false,detectSessionInUrl:true}} : {auth:{detectSessionInUrl:true}}); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && (window.__recoveryHash||'').includes('type=recovery') && session?.user){ window.__recoveryHash=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
+cloudState.client=window.supabase.createClient(cfg.url,cfg.anon, sbStorage ? {auth:{storage:sbStorage,storageKey:'sb-'+cfg.url+'-auth-token',autoRefreshToken:true,persistSession:false,detectSessionInUrl:true}} : {auth:{detectSessionInUrl:true}}); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && ((window.__recoveryHash||'').includes('type=recovery') || (window.__recoverySearch||'').includes('code=') || window.__pendingPasswordReset) && session?.user){ window.__recoveryHash=''; window.__recoverySearch=''; window.__pendingPasswordReset=false; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
  return true;
 }catch(e){updateCloudStatus('Connection failed: '+e.message,'bad'); cloudState.connected=false; return false}}
 /** Show/hide the setup-email button as the user types their email */
