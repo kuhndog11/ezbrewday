@@ -3151,21 +3151,35 @@ async function checkForPasswordRecovery(){
   const hash   = window.__recoveryHash || window.location.hash;
   const search = window.__recoverySearch || window.location.search;
 
-  const hashParams   = new URLSearchParams(hash.replace('#',''));
   const isHashRecovery  = hash.includes('type=recovery');
   const isHashMagicLink = hash.includes('type=magiclink') || hash.includes('type=signup');
-  const hasCode         = new URLSearchParams(search).has('code');
+  const searchParams    = new URLSearchParams(search);
+  const hasCode         = searchParams.has('code');
 
   if(!isHashRecovery && !isHashMagicLink && !hasCode) return;
 
-  // Clear URL immediately so tokens don't linger
-  window.history.replaceState(null,'',window.location.pathname);
+  // Make sure Supabase is connected before we try anything
+  if(!cloudState.client) await connectSupabase(false);
+  if(!cloudState.client){ showSetupExpiredPanel(); return; }
 
-  // Supabase JS auto-processes the hash token on init and signs the user in.
-  // We just need to wait for cloudState.user to be populated by the normal
-  // auth flow, then show the setup modal.
-  // Poll for up to 8 seconds for cloudState.user to be set.
   let user = cloudState.user || null;
+
+  // --- PKCE flow: ?code= in URL ---
+  // IMPORTANT: Do NOT clear the URL before calling exchangeCodeForSession.
+  // Supabase needs the code to still be in the URL (or passed explicitly).
+  if(hasCode && !user){
+    try {
+      const code = searchParams.get('code');
+      const { data, error } = await cloudState.client.auth.exchangeCodeForSession(code);
+      if(!error && data?.session?.user){
+        user = data.session.user;
+        cloudState.user = user;
+      }
+    } catch(e){ /* ignore, fall through to polling */ }
+  }
+
+  // --- Legacy hash flow: #access_token&type=recovery ---
+  // Poll briefly for cloudState.user to be populated by onAuthStateChange
   if(!user){
     for(let i = 0; i < 16; i++){
       await new Promise(r => setTimeout(r, 500));
@@ -3174,28 +3188,23 @@ async function checkForPasswordRecovery(){
     }
   }
 
+  // Final fallback: getSession
   if(!user){
-    // As a last resort try getSession on the existing client
-    if(cloudState.client){
-      const { data } = await cloudState.client.auth.getSession();
-      user = data?.session?.user || null;
-    }
+    const { data } = await cloudState.client.auth.getSession();
+    user = data?.session?.user || null;
+    if(user) cloudState.user = user;
   }
 
-  if(!user){
-    showSetupExpiredPanel();
-    return;
-  }
+  // NOW safe to clear the URL (code already exchanged or not needed)
+  window.history.replaceState(null,'',window.location.pathname);
 
   if(!user){ showSetupExpiredPanel(); return; }
 
-  cloudState.user = user;
   const emailEl = document.getElementById('setup-email');
   if(emailEl) emailEl.value = user.email || '';
   const expiredEmailEl = document.getElementById('setup-expired-email');
   if(expiredEmailEl) expiredEmailEl.value = user.email || '';
 
-  // Small delay to ensure app is fully initialized before showing modal
   setTimeout(showSetupFormPanel, 300);
 }
 
@@ -4418,7 +4427,7 @@ async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.
 let sbStorage = undefined;
 try { localStorage.setItem('__sb_test','1'); localStorage.removeItem('__sb_test'); }
 catch(e) { sbStorage = { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} }; }
-cloudState.client=window.supabase.createClient(cfg.url,cfg.anon, sbStorage ? {auth:{storage:sbStorage,storageKey:'sb-'+cfg.url+'-auth-token',autoRefreshToken:true,persistSession:false,detectSessionInUrl:true,flowType:'pkce'}} : {auth:{detectSessionInUrl:true,flowType:'pkce'}}); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED'||_evt==='PASSWORD_RECOVERY') && ((window.__recoveryHash||'').includes('type=recovery')||(window.__recoverySearch||'').includes('code=')||_evt==='PASSWORD_RECOVERY') && session?.user){ window.__recoveryHash=''; window.__recoverySearch=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
+cloudState.client=window.supabase.createClient(cfg.url,cfg.anon, sbStorage ? {auth:{storage:sbStorage,storageKey:'sb-'+cfg.url+'-auth-token',autoRefreshToken:true,persistSession:false,detectSessionInUrl:true}} : {auth:{detectSessionInUrl:true}}); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && (window.__recoveryHash||'').includes('type=recovery') && session?.user){ window.__recoveryHash=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
  return true;
 }catch(e){updateCloudStatus('Connection failed: '+e.message,'bad'); cloudState.connected=false; return false}}
 /** Show/hide the setup-email button as the user types their email */
