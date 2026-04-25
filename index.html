@@ -8937,19 +8937,34 @@ setTimeout(bindAdvanced, 500);
     }catch(e){}
 
     const styleSel = document.getElementById('gen-style');
+    // Use .value which is more reliable than .options[selectedIndex].text with optgroups
     const styleLabel = styleSel
-      ? String(styleSel.options?.[styleSel.selectedIndex]?.text || styleSel.value || '').trim()
+      ? String(styleSel.value || styleSel.options?.[styleSel.selectedIndex]?.text || styleSel.options?.[styleSel.selectedIndex]?.value || '').trim()
       : '';
+
+    console.log('[EzBrewDay] Generator style label:', JSON.stringify(styleLabel));
+    console.log('[EzBrewDay] bjcpGeneratorProfiles keys:', window.bjcpGeneratorProfiles ? Object.keys(window.bjcpGeneratorProfiles).slice(0,5) : 'UNDEFINED');
 
     // Try bjcpGeneratorProfiles first (our custom profiles)
     let base = window.bjcpGeneratorProfiles && window.bjcpGeneratorProfiles[styleLabel];
 
-    // Fallback: try name match
+    // Fallback: try case-insensitive name match
     if(!base && window.bjcpGeneratorProfiles){
-      const lower = styleLabel.toLowerCase();
-      const key = Object.keys(window.bjcpGeneratorProfiles).find(k => k.toLowerCase() === lower);
+      const lower = styleLabel.toLowerCase().trim();
+      const key = Object.keys(window.bjcpGeneratorProfiles).find(k => k.toLowerCase().trim() === lower);
       if(key) base = window.bjcpGeneratorProfiles[key];
     }
+
+    // Fallback: partial match
+    if(!base && window.bjcpGeneratorProfiles){
+      const lower = styleLabel.toLowerCase().trim();
+      const key = Object.keys(window.bjcpGeneratorProfiles).find(k =>
+        lower.includes(k.toLowerCase().trim()) || k.toLowerCase().trim().includes(lower)
+      );
+      if(key) base = window.bjcpGeneratorProfiles[key];
+    }
+
+    console.log('[EzBrewDay] base profile found:', base ? 'YES' : 'NO');
 
     if(!base){
       const preview = document.getElementById('gen-preview');
