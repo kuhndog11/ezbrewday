@@ -3151,35 +3151,21 @@ async function checkForPasswordRecovery(){
   const hash   = window.__recoveryHash || window.location.hash;
   const search = window.__recoverySearch || window.location.search;
 
+  const hashParams   = new URLSearchParams(hash.replace('#',''));
   const isHashRecovery  = hash.includes('type=recovery');
   const isHashMagicLink = hash.includes('type=magiclink') || hash.includes('type=signup');
-  const searchParams    = new URLSearchParams(search);
-  const hasCode         = searchParams.has('code');
+  const hasCode         = new URLSearchParams(search).has('code');
 
   if(!isHashRecovery && !isHashMagicLink && !hasCode) return;
 
-  // Make sure Supabase is connected before we try anything
-  if(!cloudState.client) await connectSupabase(false);
-  if(!cloudState.client){ showSetupExpiredPanel(); return; }
+  // Clear URL immediately so tokens don't linger
+  window.history.replaceState(null,'',window.location.pathname);
 
+  // Supabase JS auto-processes the hash token on init and signs the user in.
+  // We just need to wait for cloudState.user to be populated by the normal
+  // auth flow, then show the setup modal.
+  // Poll for up to 8 seconds for cloudState.user to be set.
   let user = cloudState.user || null;
-
-  // --- PKCE flow: ?code= in URL ---
-  // IMPORTANT: Do NOT clear the URL before calling exchangeCodeForSession.
-  // Supabase needs the code to still be in the URL (or passed explicitly).
-  if(hasCode && !user){
-    try {
-      const code = searchParams.get('code');
-      const { data, error } = await cloudState.client.auth.exchangeCodeForSession(code);
-      if(!error && data?.session?.user){
-        user = data.session.user;
-        cloudState.user = user;
-      }
-    } catch(e){ /* ignore, fall through to polling */ }
-  }
-
-  // --- Legacy hash flow: #access_token&type=recovery ---
-  // Poll briefly for cloudState.user to be populated by onAuthStateChange
   if(!user){
     for(let i = 0; i < 16; i++){
       await new Promise(r => setTimeout(r, 500));
@@ -3188,23 +3174,28 @@ async function checkForPasswordRecovery(){
     }
   }
 
-  // Final fallback: getSession
   if(!user){
-    const { data } = await cloudState.client.auth.getSession();
-    user = data?.session?.user || null;
-    if(user) cloudState.user = user;
+    // As a last resort try getSession on the existing client
+    if(cloudState.client){
+      const { data } = await cloudState.client.auth.getSession();
+      user = data?.session?.user || null;
+    }
   }
 
-  // NOW safe to clear the URL (code already exchanged or not needed)
-  window.history.replaceState(null,'',window.location.pathname);
+  if(!user){
+    showSetupExpiredPanel();
+    return;
+  }
 
   if(!user){ showSetupExpiredPanel(); return; }
 
+  cloudState.user = user;
   const emailEl = document.getElementById('setup-email');
   if(emailEl) emailEl.value = user.email || '';
   const expiredEmailEl = document.getElementById('setup-expired-email');
   if(expiredEmailEl) expiredEmailEl.value = user.email || '';
 
+  // Small delay to ensure app is fully initialized before showing modal
   setTimeout(showSetupFormPanel, 300);
 }
 
@@ -11700,6 +11691,291 @@ if(_origRefreshProUI){
       try{ showTab('brew-notes',document.querySelector('.tab[onclick*="brew-notes"]')); }catch(e){}
     }
   </script>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     EZBREWDAY — TERMS & CONDITIONS / PRIVACY POLICY
+     Footer links + modal with tabbed T&C and Privacy Policy
+     + checkbox injected into Pro purchase flow
+     ═══════════════════════════════════════════════════════════════ -->
+
+<style>
+/* ── Legal Footer ── */
+#legal-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 900;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  padding: 6px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  font-size: 11px;
+  color: var(--text3);
+}
+#legal-footer a {
+  color: var(--text3);
+  text-decoration: none;
+  transition: color .15s;
+  cursor: pointer;
+}
+#legal-footer a:hover { color: var(--teal); }
+#legal-footer .lf-sep { opacity: .3; }
+
+/* ── Legal Modal Overlay ── */
+#legal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(4px);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#legal-overlay.show { display: flex; }
+
+#legal-modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0,0,0,.6);
+  overflow: hidden;
+}
+
+#legal-modal-header {
+  padding: 16px 20px 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#legal-modal-header h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legal-tabs {
+  display: flex;
+  gap: 0;
+}
+.legal-tab {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text3);
+  padding: 9px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: .15s;
+}
+.legal-tab:hover { color: var(--text2); }
+.legal-tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+
+#legal-modal-body {
+  overflow-y: auto;
+  padding: 20px;
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text2);
+}
+#legal-modal-body h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--teal);
+  margin: 20px 0 8px;
+}
+#legal-modal-body h3:first-child { margin-top: 0; }
+#legal-modal-body p { margin: 0 0 10px; }
+#legal-modal-body ul { margin: 0 0 10px; padding-left: 18px; }
+#legal-modal-body li { margin-bottom: 4px; }
+#legal-modal-body strong { color: var(--text); }
+
+#legal-modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+
+</style>
+
+<!-- Legal Footer Bar -->
+<div id="legal-footer">
+  <span>© 2025 EzBrewDay. All rights reserved.</span>
+  <span class="lf-sep">|</span>
+  <a onclick="openLegalModal('tc')">Terms &amp; Conditions</a>
+  <span class="lf-sep">|</span>
+  <a onclick="openLegalModal('pp')">Privacy Policy</a>
+  <span class="lf-sep">|</span>
+  <a href="mailto:support@ezbrewday.com">support@ezbrewday.com</a>
+</div>
+
+<!-- Legal Modal -->
+<div id="legal-overlay" onclick="if(event.target===this) closeLegalModal()">
+  <div id="legal-modal">
+    <div id="legal-modal-header">
+      <h2>⚖️ Legal</h2>
+      <div class="legal-tabs">
+        <div class="legal-tab active" id="ltab-tc" onclick="switchLegalTab('tc')">Terms &amp; Conditions</div>
+        <div class="legal-tab" id="ltab-pp" onclick="switchLegalTab('pp')">Privacy Policy</div>
+      </div>
+    </div>
+
+    <div id="legal-modal-body">
+      <!-- T&C Panel -->
+      <div id="legal-panel-tc">
+        <p><strong>Last updated: April 2025</strong></p>
+        <p>These Terms &amp; Conditions ("Terms") govern your use of EzBrewDay ("the Service"), operated by EzBrewDay ("we", "us", or "our"). By accessing or using the Service, you agree to be bound by these Terms.</p>
+
+        <h3>1. Use of the Service</h3>
+        <p>EzBrewDay is a browser-based homebrewing calculator and brew day management tool. You may use the Service for personal, non-commercial brewing purposes. You agree not to:</p>
+        <ul>
+          <li>Reverse engineer, decompile, or copy any part of the Service</li>
+          <li>Use the Service to distribute malicious content or abuse other users</li>
+          <li>Attempt to gain unauthorized access to any part of the Service or its infrastructure</li>
+          <li>Resell or sublicense access to the Service</li>
+        </ul>
+
+        <h3>2. Pro License</h3>
+        <p>The EzBrewDay Pro license is a personal, non-transferable subscription that grants access to premium features. Your license is tied to the email address used at purchase and may not be shared or transferred to another person.</p>
+
+        <h3>3. Refund Policy</h3>
+        <p>We offer a <strong>7-day refund policy</strong> from the date of purchase. To request a refund, contact us at <strong>support@ezbrewday.com</strong> within 7 days of your purchase with your order details. Refunds are issued to the original payment method via Stripe. After 7 days, all sales are final.</p>
+
+        <h3>4. Account Suspension & Termination</h3>
+        <p>We reserve the right to suspend or terminate your account at our discretion if you violate these Terms or engage in behavior that is harmful to the Service or other users. If your paid account is terminated due to a violation, you will not be entitled to a refund.</p>
+
+        <h3>5. Service Availability</h3>
+        <p>The Service is provided on a best-effort basis. We do not guarantee uninterrupted availability and are not liable for any downtime, data loss, or service interruptions. We recommend periodically exporting your brew data as a backup.</p>
+
+        <h3>6. Disclaimer of Warranties</h3>
+        <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. USE OF THE SERVICE IS AT YOUR OWN RISK.</p>
+
+        <h3>7. Limitation of Liability</h3>
+        <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, EZBREWDAY SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING LOSS OF DATA, REVENUE, OR PROFITS, ARISING FROM YOUR USE OF OR INABILITY TO USE THE SERVICE.</p>
+
+        <h3>8. Changes to Terms</h3>
+        <p>We may update these Terms from time to time. We will notify users of significant changes via the app or email. Continued use of the Service after changes constitutes your acceptance of the updated Terms.</p>
+
+        <h3>9. Governing Law</h3>
+        <p>These Terms are governed by the laws of the State of Ohio, United States, without regard to its conflict of law provisions.</p>
+
+        <h3>10. Contact</h3>
+        <p>For questions about these Terms, contact us at <strong>support@ezbrewday.com</strong>.</p>
+      </div>
+
+      <!-- Privacy Policy Panel -->
+      <div id="legal-panel-pp" style="display:none">
+        <p><strong>Last updated: April 2025</strong></p>
+        <p>This Privacy Policy explains how EzBrewDay ("we", "us", or "our") collects, uses, and protects your information when you use our Service.</p>
+
+        <h3>1. Information We Collect</h3>
+        <p>We collect only the minimum information necessary to operate the Service:</p>
+        <ul>
+          <li><strong>Email address</strong> — collected at account creation and used for authentication, password resets, and service communications</li>
+          <li><strong>Brew data</strong> — recipes, brew day notes, and settings you create within the app, stored in your cloud account</li>
+          <li><strong>Payment information</strong> — processed entirely by Stripe; we do not store your credit card details</li>
+        </ul>
+
+        <h3>2. How We Use Your Information</h3>
+        <ul>
+          <li>To authenticate you and manage your account</li>
+          <li>To store and sync your brew data across sessions</li>
+          <li>To process payments and manage your Pro license</li>
+          <li>To send transactional emails (password resets, purchase confirmations)</li>
+          <li>To respond to support requests</li>
+        </ul>
+
+        <h3>3. Third-Party Services</h3>
+        <p>We use the following trusted third-party services to operate EzBrewDay:</p>
+        <ul>
+          <li><strong>Supabase</strong> — provides our authentication system and cloud database storage. Your email and brew data are stored on Supabase-managed servers. See <a href="https://supabase.com/privacy" target="_blank" style="color:var(--teal)">Supabase's Privacy Policy</a>.</li>
+          <li><strong>Stripe</strong> — processes all payments. We never see or store your credit card information. See <a href="https://stripe.com/privacy" target="_blank" style="color:var(--teal)">Stripe's Privacy Policy</a>.</li>
+          <li><strong>Netlify</strong> — hosts the EzBrewDay application. See <a href="https://www.netlify.com/privacy/" target="_blank" style="color:var(--teal)">Netlify's Privacy Policy</a>.</li>
+          <li><strong>Resend</strong> — delivers transactional emails. See <a href="https://resend.com/privacy" target="_blank" style="color:var(--teal)">Resend's Privacy Policy</a>.</li>
+        </ul>
+
+        <h3>4. What We Do Not Do</h3>
+        <ul>
+          <li>We do not sell your personal data to any third party</li>
+          <li>We do not serve ads or share your data with advertisers</li>
+          <li>We do not share your email or personal information with anyone except as required by law</li>
+        </ul>
+
+        <h3>5. Data Retention</h3>
+        <p>We retain your data for as long as your account is active. If you wish to delete your account and all associated data, contact us at <strong>support@ezbrewday.com</strong> and we will process your request within 30 days.</p>
+
+        <h3>6. Security</h3>
+        <p>We use industry-standard security practices including encrypted connections (HTTPS/TLS) and secure authentication via Supabase. Passwords are never stored in plain text. While we take reasonable steps to protect your data, no system is 100% secure and we cannot guarantee absolute security.</p>
+
+        <h3>7. Your Rights (GDPR & CCPA)</h3>
+        <p>Depending on your location, you may have the right to:</p>
+        <ul>
+          <li>Access the personal data we hold about you</li>
+          <li>Request correction of inaccurate data</li>
+          <li>Request deletion of your data ("right to be forgotten")</li>
+          <li>Object to or restrict processing of your data</li>
+          <li>Data portability (export your brew data)</li>
+        </ul>
+        <p>To exercise any of these rights, contact us at <strong>support@ezbrewday.com</strong>.</p>
+
+        <h3>8. Children's Privacy</h3>
+        <p>EzBrewDay is not intended for users under the age of 18. We do not knowingly collect personal information from minors.</p>
+
+        <h3>9. Changes to This Policy</h3>
+        <p>We may update this Privacy Policy from time to time. We will notify you of significant changes via the app or email. Continued use of the Service after changes constitutes your acceptance of the updated policy.</p>
+
+        <h3>10. Contact</h3>
+        <p>For privacy questions or data requests, contact us at <strong>support@ezbrewday.com</strong>.</p>
+      </div>
+    </div>
+
+    <div id="legal-modal-footer">
+      <button class="btn btn-primary btn-sm" onclick="closeLegalModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Legal Modal ──────────────────────────────────────────────────
+function openLegalModal(tab){
+  document.getElementById('legal-overlay').classList.add('show');
+  switchLegalTab(tab || 'tc');
+}
+function closeLegalModal(){
+  document.getElementById('legal-overlay').classList.remove('show');
+}
+function switchLegalTab(tab){
+  document.getElementById('legal-panel-tc').style.display = tab==='tc' ? '' : 'none';
+  document.getElementById('legal-panel-pp').style.display = tab==='pp' ? '' : 'none';
+  document.getElementById('ltab-tc').classList.toggle('active', tab==='tc');
+  document.getElementById('ltab-pp').classList.toggle('active', tab==='pp');
+}
+
+
+
+// Keyboard close
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') closeLegalModal();
+});
+</script>
 
 </body>
 </html>
