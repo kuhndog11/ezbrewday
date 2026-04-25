@@ -6094,7 +6094,8 @@ window.bjcpGeneratorProfiles = {
     grains:[{name:"Pale Malt 2-Row US", pct:75},{name:"Corn Flaked", pct:15},{name:"Cara-Pils / Dextrine", pct:6},{name:"Vienna Malt", pct:4}],
     hops:[{name:"Cluster", use:"60 min", amt:"0.40 oz"},{name:"Saaz (Czech)", use:"10 min", amt:"0.40 oz"}],
     yeast:"US-05"
-  }
+  },
+
 };
 
 
@@ -7913,17 +7914,15 @@ setTimeout(bindAdvanced, 500);
   }
 
   window.buildBJCPGeneratorLibrary = function(){
-    // Start with our hand-crafted profiles as the base — never overwrite them
-    const existing = window.bjcpGeneratorProfiles || {};
-    const lib = Object.assign({}, existing);
+    const lib = {};
     if(!Array.isArray(window.STYLES_DB)) return lib;
     window.STYLES_DB.forEach(style => {
-      // Only generate a fallback profile if we don't already have one
-      if(lib[style.name]) return;
       const prof = buildProfileFromStyle(style);
       if(!prof) return;
-      const code = stripLeadingZeroCode(style.styleCode || style.num || '');
+      const code = stripLeadingZeroCode(style.num || '');
+      const label = style.name;
       lib[style.name] = prof;
+      lib[label] = prof;
       if(code) lib[code] = prof;
     });
     return lib;
