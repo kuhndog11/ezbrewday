@@ -8923,6 +8923,19 @@ setTimeout(bindAdvanced, 500);
 
   window.generateBJCPRecipe = function(){
     // Always use bjcpGeneratorProfiles as the source of truth
+    // Sync style from main screen first (in case modal opened before sync ran)
+    try{
+      const mainStyle = document.getElementById('beerStyle');
+      const genStyle  = document.getElementById('gen-style');
+      if(mainStyle && genStyle && mainStyle.value){
+        const mainText = (mainStyle.options[mainStyle.selectedIndex]?.text || mainStyle.value || '').trim();
+        const norm = s => String(s||'').toLowerCase().trim();
+        let match = Array.from(genStyle.options).find(o => norm(o.text) === norm(mainText) || norm(o.value) === norm(mainText));
+        if(!match) match = Array.from(genStyle.options).find(o => norm(mainText).includes(norm(o.value)) || norm(o.value).includes(norm(mainText)));
+        if(match) genStyle.value = match.value;
+      }
+    }catch(e){}
+
     const styleSel = document.getElementById('gen-style');
     const styleLabel = styleSel
       ? String(styleSel.options?.[styleSel.selectedIndex]?.text || styleSel.value || '').trim()
