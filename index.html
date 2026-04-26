@@ -378,6 +378,49 @@ linear-gradient(90deg,transparent 0 28%,rgba(20,184,166,.22) 28% 34%,transparent
   .hdr-chips{width:100%;overflow-x:auto;padding-bottom:2px}
   .hdr-btns{width:100%;overflow-x:auto;padding-bottom:2px}
 }
+/* ── More menu dropdown ── */
+.hdr-more-wrap{position:relative;display:none}
+.hdr-more-dropdown{
+  display:none;position:absolute;top:calc(100% + 6px);right:0;
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:6px;min-width:180px;z-index:2000;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+}
+.hdr-more-dropdown.open{display:block}
+.hdr-more-dropdown button{
+  display:block;width:100%;text-align:left;background:none;
+  border:none;color:var(--text);font-size:13px;padding:9px 12px;
+  cursor:pointer;border-radius:7px;transition:.12s;
+}
+.hdr-more-dropdown button:hover{background:var(--bg3)}
+.hdr-btns-desktop{display:flex;gap:6px;align-items:center}
+
+/* ── Mobile: show more menu, hide desktop buttons ── */
+@media(max-width:760px){
+  .hdr{flex-wrap:wrap;gap:8px;padding:8px 12px}
+  .hdr-btns{width:100%;justify-content:space-between;flex-wrap:nowrap}
+  .hdr-more-wrap{display:block}
+  .hdr-btns-desktop{display:none}
+  /* Larger touch targets */
+  .btn-sm{min-height:38px;padding:8px 10px}
+  .tab{min-height:44px;display:flex;align-items:center}
+  /* Input touch targets */
+  input[type=text],input[type=number],input[type=date],select,textarea{min-height:44px}
+  /* Tabs show scroll hint */
+  .tabs::after{
+    content:'';position:sticky;right:0;width:24px;
+    background:linear-gradient(to right,transparent,var(--bg2));
+    flex-shrink:0;pointer-events:none;
+  }
+}
+@media(max-width:480px){
+  .hdr-logo img,.hdr-icon{width:28px;height:28px}
+  .hdr-title{font-size:13px}
+  .hdr-sub{display:none}
+  #hdr-more-btn{font-size:12px}
+  /* Stack brew day notes grid on very small screens */
+  .brew-grid,.style-row{flex-direction:column}
+}
 @media(max-width:768px){
   body{font-size:14px}
   .tabs{padding:0 10px}
@@ -1593,18 +1636,34 @@ button[onclick="connectSupabase(true)"]{display:none!important}
   </div>
   <div class="hdr-chips" style="display:none">
   </div>
-  <div class="hdr-btns">
+  <div class="hdr-btns" id="hdr-btns-main">
+    <!-- Always visible -->
     <button class="btn btn-ghost btn-sm" onclick="resetAll()">↺ Reset</button>
     <button class="btn btn-ghost btn-sm" onclick="exportPDF()">📄 Export PDF</button>
     <button class="btn btn-ghost btn-sm" onclick="showCloudModal()">🔐 Account Login</button>
-    <button class="btn btn-ghost btn-sm" onclick="showCloudLibrary()">☁️ Cloud Library</button>
-    <button id="community-header-btn" class="btn btn-ghost btn-sm" onclick="showCommunityLibrary()">🌍 Community</button>
-    <button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));document.getElementById('on-tap')?.classList.add('active');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));renderTapBoard_init()">🍺 On Tap</button>
-    <button class="btn btn-ghost btn-sm" onclick="startBeerCheckout()">🍺 Buy Me a Beer</button>
-    <button class="btn btn-ghost btn-sm" onclick="openFeedbackModal()" id="feedback-toolbar-btn">💬 Feedback</button>
-    <button class="btn btn-ghost btn-sm pro-locked-btn" data-pro-feature="json" onclick="triggerJsonImport()">📂 Import JSON</button>
+    <button class="btn btn-primary btn-sm pro-locked-btn" data-pro-feature="json" data-original-onclick="saveData()" onclick="saveData()" title="Download recipe as a JSON file to your computer">💾 Save JSON</button>
+    <!-- More menu trigger — only shows on mobile -->
+    <div class="hdr-more-wrap" id="hdr-more-wrap">
+      <button class="btn btn-ghost btn-sm" onclick="toggleHdrMore(event)" id="hdr-more-btn" aria-label="More options">⋯ More</button>
+      <div class="hdr-more-dropdown" id="hdr-more-dropdown">
+        <button onclick="showCloudLibrary();closeHdrMore()">☁️ Cloud Library</button>
+        <button id="community-header-btn" onclick="showCommunityLibrary();closeHdrMore()">🌍 Community</button>
+        <button onclick="document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));document.getElementById('on-tap')?.classList.add('active');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));renderTapBoard_init();closeHdrMore()">🍺 On Tap</button>
+        <button onclick="openFeedbackModal();closeHdrMore()" id="feedback-toolbar-btn">💬 Feedback</button>
+        <button onclick="startBeerCheckout();closeHdrMore()">🍺 Buy Me a Beer</button>
+        <button class="pro-locked-btn" data-pro-feature="json" data-original-onclick="triggerJsonImport()" onclick="triggerJsonImport();closeHdrMore()">📂 Import JSON</button>
+      </div>
+    </div>
+    <!-- Desktop: show all buttons, hide more menu -->
+    <div class="hdr-btns-desktop">
+      <button class="btn btn-ghost btn-sm" onclick="showCloudLibrary()">☁️ Cloud Library</button>
+      <button id="community-header-btn-desktop"  class="btn btn-ghost btn-sm" onclick="showCommunityLibrary()">🌍 Community</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));document.getElementById('on-tap')?.classList.add('active');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));renderTapBoard_init()">🍺 On Tap</button>
+      <button class="btn btn-ghost btn-sm" onclick="openFeedbackModal()">💬 Feedback</button>
+      <button class="btn btn-ghost btn-sm" onclick="startBeerCheckout()">🍺 Buy Me a Beer</button>
+      <button class="btn btn-ghost btn-sm pro-locked-btn" data-pro-feature="json" data-original-onclick="triggerJsonImport()" onclick="triggerJsonImport()">📂 Import JSON</button>
+    </div>
     <input type="file" id="json-import-input" accept=".json,application/json" style="display:none" onchange="handleJsonImport(event)">
-    <button class="btn btn-primary btn-sm pro-locked-btn" data-pro-feature="json" onclick="saveData()" title="Download recipe as a JSON file to your computer">💾 Save JSON</button>
   </div>
 </header>
 
@@ -12131,6 +12190,27 @@ if(_origRefreshProUI){
     }
   </script>
 
+
+
+<script>
+// ── Mobile "More" menu ───────────────────────────────────────────
+function toggleHdrMore(e){
+  e.stopPropagation();
+  const dd = document.getElementById('hdr-more-dropdown');
+  dd.classList.toggle('open');
+}
+function closeHdrMore(){
+  document.getElementById('hdr-more-dropdown')?.classList.remove('open');
+}
+// Close on outside click
+document.addEventListener('click', function(e){
+  if(!e.target.closest('#hdr-more-wrap')) closeHdrMore();
+});
+// Close on escape
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeHdrMore();
+});
+</script>
 
 <!-- ═══════════════════════════════════════════════════════════
      EZBREWDAY FEEDBACK SYSTEM
