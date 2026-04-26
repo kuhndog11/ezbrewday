@@ -12443,6 +12443,17 @@ if(_origRefreshProUI){
         if(error) throw error;
       }
 
+      // Send email notification via Netlify function
+      try {
+        await fetch('/.netlify/functions/send-feedback-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch(emailErr){
+        console.warn('Email notification failed (non-critical):', emailErr);
+      }
+
       // Show success
       const msgs = {
         bug:    "🐛 Bug reported! We'll investigate and fix it.",
