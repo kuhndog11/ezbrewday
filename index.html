@@ -8792,7 +8792,10 @@ setTimeout(bindAdvanced, 500);
       return _oldGenerate ? _oldGenerate() : null;
     }
 
-    let base = authenticProfileForCode(styleRow);
+    const _p1 = window.bjcpGeneratorProfiles || {};
+    const _n1 = s => String(s||'').toLowerCase().trim();
+    let base = _p1[styleLabel] || _p1[Object.keys(_p1).find(k=>_n1(k)===_n1(styleLabel))||''];
+    if(!base) base = authenticProfileForCode(styleRow);
     if(!base){
       return _oldGenerate ? _oldGenerate() : null;
     }
@@ -8932,7 +8935,10 @@ setTimeout(bindAdvanced, 500);
       return;
     }
 
-    let base = authenticProfileForCode(styleRow);
+    const _p2 = window.bjcpGeneratorProfiles || {};
+    const _n2 = s => String(s||'').toLowerCase().trim();
+    let base = _p2[styleLabel] || _p2[Object.keys(_p2).find(k=>_n2(k)===_n2(styleLabel))||''];
+    if(!base) base = authenticProfileForCode(styleRow);
     if(!base){
       if (typeof _previousGenerate === 'function') return _previousGenerate();
       const preview = document.getElementById('gen-preview');
@@ -9152,7 +9158,16 @@ setTimeout(bindAdvanced, 500);
       return;
     }
 
-    const base = window.authenticProfileForCode(styleRow);
+    // Use hand-crafted bjcpGeneratorProfiles first
+    const _profiles = window.bjcpGeneratorProfiles || {};
+    const _norm = s => String(s||'').toLowerCase().trim();
+    let base = _profiles[styleLabel];
+    if(!base){
+      const _key = Object.keys(_profiles).find(k => _norm(k) === _norm(styleLabel));
+      if(_key) base = _profiles[_key];
+    }
+    // Fall back to authenticProfileForCode only if no hand-crafted profile exists
+    if(!base) base = window.authenticProfileForCode(styleRow);
     if(!base){
       const preview = document.getElementById('gen-preview');
       if(preview) preview.innerHTML = '<div class="gen-error">A profile could not be built for this style.</div>';
