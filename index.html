@@ -396,13 +396,13 @@ linear-gradient(90deg,transparent 0 28%,rgba(20,184,166,.22) 28% 34%,transparent
 .hdr-btns-desktop{display:flex;gap:6px;align-items:center}
 
 /* ── Mobile: show more menu, hide desktop buttons ── */
-@media(max-width:760px){
+@media(max-width:900px){
   .hdr{flex-wrap:wrap;gap:6px;padding:8px 10px;align-items:center}
   /* Logo row — logo + chip on left, subscription on right */
   .hdr-logo{flex-shrink:0}
   .hdr-chips{flex:1;min-width:0;overflow:hidden}
   /* Hide subscription text on small screens to save space */
-  #manage-sub-btn{display:none!important}
+  #manage-subscription-btn{display:none!important}
   /* Buttons take full width below logo row */
   .hdr-btns{width:100%;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow:hidden}
   .hdr-more-wrap{display:block;margin-left:auto}
