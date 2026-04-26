@@ -12518,7 +12518,7 @@ if(_origRefreshProUI){
         const dateStr = idea.created_at ? new Date(idea.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
         return `
           <div class="fb-idea-card" id="idea-card-${idea.id}">
-            <button class="fb-vote-btn ${voted?'voted':''}" onclick="voteIdea('${idea.id}', ${voted})" title="${voted?'Remove vote':'Upvote'}">
+            <button class="fb-vote-btn ${voted?'voted':''}" onclick="voteIdea('${idea.id}')" title="${voted?'Remove vote':'Upvote'}">
               <div class="fb-vote-arrow">${voted?'▲':'△'}</div>
               <div class="fb-vote-count" id="vote-count-${idea.id}">${idea.votes || 0}</div>
             </button>
@@ -12535,12 +12535,14 @@ if(_origRefreshProUI){
     }
   }
 
-  window.voteIdea = async function(id, alreadyVoted){
+  window.voteIdea = async function(id){
     if(!cloudState?.user){
       alert('Please sign in to vote.');
       return;
     }
 
+    // Always check _votedIds dynamically — never trust static rendered value
+    const alreadyVoted = _votedIds.includes(id);
     const delta      = alreadyVoted ? -1 : 1;
     const countEl    = document.getElementById('vote-count-'+id);
     const btn        = countEl?.parentElement;
@@ -12552,6 +12554,7 @@ if(_origRefreshProUI){
     if(btn){
       btn.classList.toggle('voted', !alreadyVoted);
       btn.querySelector('.fb-vote-arrow').textContent = alreadyVoted ? '△' : '▲';
+      btn.onclick = function(){ voteIdea(id); };
     }
 
     // Update voted list
