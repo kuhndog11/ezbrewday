@@ -1322,6 +1322,31 @@ button[onclick="connectSupabase(true)"]{display:none!important}
   .tap-stats{grid-template-columns:repeat(2,1fr)}
   .tap-stat-val{font-size:12px}
 }
+
+/* ── Tap board scoped color variables ── */
+/* These --tap-* vars only affect the tap board display, not the main app */
+:root{
+  --tap-bg: var(--bg);
+  --tap-card: var(--bg2);
+  --tap-name: var(--text);
+  --tap-style: var(--text2);
+  --tap-stat: var(--teal);
+}
+/* Apply tap colors within tap board containers */
+#tap-display-wrap,#tap-public-content,.tap-board-wrap,
+#tap-live-preview-inner,.tbr{
+  background: var(--tap-bg) !important;
+}
+.tap-card,.tap-slot-card,.tbd-card{
+  background: var(--tap-card) !important;
+  color: var(--tap-name) !important;
+}
+.tap-beer-style,.tap-style-text,.tbd-style{
+  color: var(--tap-style) !important;
+}
+.tap-stat,.tap-abv,.tap-ibu,.tap-srm,.tbd-stat{
+  color: var(--tap-stat) !important;
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onload="window._pdfReady=true" onerror="window._pdfReady=false">
 
@@ -4298,11 +4323,11 @@ function initCustomColorsPanel(){
 
 // ── Tap List Custom Colors ────────────────────────────────────────────────
 const TAP_COLOR_MAP = [
-  ['tcc-bg',   '--bg'],
-  ['tcc-card', '--bg2'],
-  ['tcc-name', '--text'],
-  ['tcc-style','--text2'],
-  ['tcc-stat', '--teal'],
+  ['tcc-bg',   '--tap-bg'],
+  ['tcc-card', '--tap-card'],
+  ['tcc-name', '--tap-name'],
+  ['tcc-style','--tap-style'],
+  ['tcc-stat', '--tap-stat'],
 ];
 
 function initTapCustomColorsPanel(){
@@ -4346,9 +4371,17 @@ function applyTapCustomColors(vals){
   // No Pro check here — apply whatever is saved
   const v = vals||getTapCustomColors();
   const root = document.documentElement;
+  // Apply to tap board element specifically, not the whole document
+  const tapRoot = document.getElementById('tap-public-board') || 
+                  document.querySelector('.tap-board-preview') ||
+                  document.querySelector('[id^="tap-board"]') ||
+                  root; // fallback to document root only if needed
   TAP_COLOR_MAP.forEach(([id, cssVar])=>{
     const saved = v[id];
-    if(saved && /^#[0-9a-fA-F]{6}$/.test(saved)) root.style.setProperty(cssVar, saved);
+    if(saved && /^#[0-9a-fA-F]{6}$/.test(saved)){
+      // Set on document root as --tap-* prefixed vars (won't conflict with app)
+      root.style.setProperty(cssVar, saved);
+    }
   });
   if(typeof tapState!=='undefined') tapState.customColors = v;
   if(v['tcc-font']){ loadGoogleFont(v['tcc-font']); 
