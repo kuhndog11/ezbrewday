@@ -12771,7 +12771,7 @@ document.addEventListener('keydown', function(e){
     if(!isProUser() || !cloudState?.client || !cloudState?.user) return;
     try {
       const tapSettings = (()=>{ 
-        try{ return JSON.parse(localStorage.getItem('ezbd_tap_settings')||localStorage.getItem('srbc_tap_settings_v1')||'{}'); }
+        try{ return JSON.parse(localStorage.getItem('ezbd_tap_settings_v1')||'{}'); }
         catch(e){ return {}; } 
       })();
       const payload = {
@@ -12819,9 +12819,9 @@ document.addEventListener('keydown', function(e){
         setTapCustomColors(p.tap);
         applyTapCustomColors(p.tap);
       }
-      // Apply tap settings
-      if(p.tapSettings && Object.keys(p.tapSettings).length){
-        if(typeof tapSaveSettingsLocal === 'function') tapSaveSettingsLocal(p.tapSettings);
+      // Apply tap settings — only if they have meaningful content
+      if(p.tapSettings && p.tapSettings.tapCount && typeof tapSaveSettingsLocal === 'function'){
+        tapSaveSettingsLocal(p.tapSettings);
       }
 
       console.log('[CloudSync] Settings restored from cloud');
