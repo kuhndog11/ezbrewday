@@ -404,11 +404,12 @@ linear-gradient(90deg,transparent 0 28%,rgba(20,184,166,.22) 28% 34%,transparent
   /* Hide subscription text on small screens to save space */
   #manage-subscription-btn{display:none!important}
   /* Buttons take full width below logo row */
-  .hdr-btns{width:100%;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow:hidden}
-  .hdr-more-wrap{display:block;margin-left:auto}
+  .hdr-btns{width:100%;display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+  .hdr-btns::-webkit-scrollbar{display:none}
+  .hdr-more-wrap{display:block;flex-shrink:0}
   .hdr-btns-desktop{display:none}
   /* Shrink button text/padding on mobile */
-  .hdr-btns .btn-sm{font-size:11px;padding:7px 8px;white-space:nowrap;flex-shrink:0}
+  .hdr-btns .btn-sm{font-size:11px;padding:6px 8px;white-space:nowrap;flex-shrink:0;min-height:36px}
   /* Larger touch targets */
   .tab{min-height:44px;display:flex;align-items:center}
   /* Input touch targets */
