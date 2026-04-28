@@ -2876,90 +2876,55 @@ const GRAINS_DB=[{name:"Acid Malt",origin:"Germany",type:"Grain",srm:3,sg:1.027,
 ,{name:"American Lager",styleCode:"01B",fam:"Lager",desc:"A clean refreshing light lager.",abvMin:0.042,abvMax:0.053,ibuMin:8,ibuMax:18,srmMin:2,srmMax:4,ogMin:1.040,ogMax:1.050,fgMin:1.004,fgMax:1.010}
 ,{name:"Dry Stout",styleCode:"15B",fam:"Stout",desc:"A dry roasty stout with coffee bitterness.",abvMin:0.040,abvMax:0.052,ibuMin:30,ibuMax:45,srmMin:25,srmMax:40,ogMin:1.036,ogMax:1.050,fgMin:1.007,fgMax:1.011}
 ,{name:"Smoked Beer",styleCode:"32A",fam:"Specialty",desc:"A beer with distinctive smoke character.",abvMin:0.040,abvMax:0.065,ibuMin:20,ibuMax:40,srmMin:10,srmMax:35,ogMin:1.050,ogMax:1.076,fgMin:1.010,fgMax:1.018}
-,{name:"Fruit Beer",styleCode:"29A",fam:"Specialty",desc:"Any base beer with fruit added.",abvMin:0.030,abvMax:0.100,ibuMin:5,ibuMax:70,srmMin:1,srmMax:40,ogMin:1.030,ogMax:1.100,fgMin:1.000,fgMax:1.020}],WATER_PROFILES=[
-{name:"Burton-on-Trent",ca:275,mg:40,na:25,so4:610,cl:35,hco3:270},
-{name:"Burton (boiled)",ca:255,mg:40,na:25,so4:610,cl:35,hco3:210},
-{name:"Dortmund",ca:230,mg:15,na:40,so4:330,cl:130,hco3:235},
-{name:"Dublin",ca:120,mg:4,na:12,so4:55,cl:19,hco3:315},
-{name:"Dublin (boiled)",ca:43,mg:4,na:12,so4:55,cl:19,hco3:80},
-{name:"Edinburgh",ca:100,mg:20,na:55,so4:140,cl:50,hco3:285},
-{name:"Edinburgh (boiled)",ca:33,mg:20,na:55,so4:140,cl:50,hco3:80},
-{name:"London",ca:70,mg:6,na:15,so4:40,cl:38,hco3:166},
-{name:"London (boiled)",ca:42,mg:6,na:15,so4:40,cl:38,hco3:80},
-{name:"Munich",ca:77,mg:17,na:4,so4:18,cl:8,hco3:295},
-{name:"Munich (boiled)",ca:12,mg:17,na:4,so4:18,cl:8,hco3:100},
-{name:"Pilsen",ca:7,mg:2,na:2,so4:8,cl:6,hco3:16},
-{name:"Vienna",ca:75,mg:15,na:10,so4:60,cl:15,hco3:225},
-{name:"Vienna (boiled)",ca:27,mg:15,na:10,so4:60,cl:15,hco3:80},
-{name:"Dusseldorf",ca:40,mg:15,na:25,so4:80,cl:45,hco3:81},
-{name:"Dusseldorf (boiled)",ca:39,mg:15,na:25,so4:80,cl:45,hco3:80},
-{name:"Beerse",ca:73,mg:13,na:52,so4:125,cl:80,hco3:128},
-{name:"Beerse (boiled)",ca:57,mg:13,na:52,so4:125,cl:80,hco3:80},
-{name:"Brugse",ca:132,mg:13,na:20,so4:99,cl:38,hco3:326},
-{name:"Brugse (boiled)",ca:51,mg:13,na:20,so4:99,cl:38,hco3:80},
-{name:"Brussels",ca:100,mg:11,na:18,so4:70,cl:41,hco3:250},
-{name:"Brussels (boiled)",ca:44,mg:11,na:18,so4:70,cl:41,hco3:80},
-{name:"Hoegaarden",ca:90,mg:11,na:16,so4:82,cl:53,hco3:171},
-{name:"Hoegaarden (boiled)",ca:60,mg:11,na:16,so4:82,cl:53,hco3:80},
-{name:"Willebroek",ca:68,mg:8,na:33,so4:70,cl:60,hco3:143},
-{name:"Willebroek (boiled)",ca:48,mg:8,na:33,so4:70,cl:60,hco3:80},
-{name:"Antwerpen",ca:65,mg:7,na:16,so4:48,cl:30,hco3:159},
-{name:"Antwerpen (boiled)",ca:39,mg:7,na:16,so4:48,cl:30,hco3:80},
-{name:"Brabant",ca:111,mg:12,na:14,so4:74,cl:40,hco3:270},
-{name:"Brabant (boiled)",ca:49,mg:12,na:14,so4:74,cl:40,hco3:80},
-{name:"Henegouwen",ca:113,mg:17,na:15,so4:65,cl:41,hco3:315},
-{name:"Henegouwen (boiled)",ca:36,mg:17,na:15,so4:65,cl:41,hco3:80},
-{name:"Achouffe",ca:29,mg:4,na:12,so4:12,cl:35,hco3:70},
-{name:"Orval",ca:96,mg:4,na:5,so4:25,cl:13,hco3:270},
-{name:"Orval (boiled)",ca:34,mg:4,na:5,so4:25,cl:13,hco3:80},
-{name:"Rochefort",ca:82,mg:10,na:6,so4:32,cl:17,hco3:245},
-{name:"Rochefort (boiled)",ca:28,mg:10,na:6,so4:32,cl:17,hco3:80},
-{name:"Chimay",ca:70,mg:7,na:7,so4:21,cl:21,hco3:205},
-{name:"Chimay (boiled)",ca:29,mg:7,na:7,so4:21,cl:21,hco3:80},
-{name:"Luik / Liege",ca:60,mg:15,na:11,so4:28,cl:24,hco3:210},
-{name:"Luik / Liege (boiled)",ca:18,mg:15,na:11,so4:28,cl:24,hco3:80},
-{name:"East Flanders",ca:134,mg:22,na:52,so4:76,cl:47,hco3:475},
-{name:"East Flanders (boiled)",ca:4,mg:22,na:52,so4:76,cl:47,hco3:80},
-{name:"West Flanders",ca:114,mg:10,na:125,so4:145,cl:139,hco3:305},
-{name:"West Flanders (boiled)",ca:40,mg:10,na:125,so4:145,cl:139,hco3:80},
-{name:"Ardennes",ca:60,mg:13,na:11,so4:25,cl:24,hco3:200},
-{name:"Ardennes (boiled)",ca:20,mg:13,na:11,so4:25,cl:24,hco3:80},
-{name:"Pale Ale Profile",ca:140,mg:18,na:25,so4:300,cl:55,hco3:110},
-{name:"Mild Ale Profile",ca:50,mg:0,na:20,so4:40,cl:65,hco3:45},
-{name:"American Lager",ca:13,mg:6,na:8,so4:37,cl:13,hco3:20},
-{name:"Yellow Full",ca:51,mg:6,na:6,so4:56,cl:71,hco3:1},
-{name:"Yellow Balanced",ca:51,mg:8,na:6,so4:76,cl:61,hco3:1},
-{name:"Yellow Dry",ca:51,mg:11,na:6,so4:106,cl:46,hco3:1},
-{name:"Amber Full",ca:51,mg:6,na:16,so4:56,cl:66,hco3:36},
-{name:"Amber Balanced",ca:51,mg:11,na:16,so4:76,cl:64,hco3:41},
-{name:"Amber Dry",ca:51,mg:16,na:16,so4:111,cl:51,hco3:46},
-{name:"Brown Full",ca:51,mg:6,na:28,so4:51,cl:61,hco3:86},
-{name:"Brown Balanced",ca:51,mg:11,na:28,so4:71,cl:56,hco3:91},
-{name:"Brown Dry",ca:51,mg:16,na:28,so4:100,cl:46,hco3:96},
-{name:"Black Full",ca:51,mg:6,na:34,so4:36,cl:46,hco3:141},
-{name:"Black Balanced",ca:51,mg:11,na:34,so4:58,cl:46,hco3:143},
-{name:"Black Dry",ca:51,mg:16,na:34,so4:85,cl:40,hco3:146},
-{name:"PseudoBohPils",ca:20,mg:0,na:8,so4:15,cl:35,hco3:1},
-{name:"Jever (boiled)",ca:46,mg:5,na:15,so4:75,cl:30,hco3:60},
-{name:"Wicklow Mtn",ca:18,mg:2,na:13,so4:22,cl:20,hco3:35},
-{name:"Christmas Ale",ca:252,mg:9,na:7,so4:10,cl:10,hco3:291},
-{name:"Julius Treehouse",ca:61,mg:20,na:38,so4:142,cl:96,hco3:38},
-{name:"Cream Ale",ca:34,mg:0,na:11,so4:13,cl:68,hco3:0},
-{name:"NEIPA Brulosophy",ca:110,mg:5,na:8,so4:100,cl:150,hco3:0},
-{name:"Kolsch / Cologne",ca:65,mg:14,na:9,so4:68,cl:47,hco3:164},
-{name:"Distilled / RO Water",ca:0,mg:0,na:0,so4:0,cl:0,hco3:0},
-{name:"Soft Municipal Water",ca:25,mg:4,na:8,so4:20,cl:18,hco3:45},
-{name:"Moderate Municipal Water",ca:55,mg:10,na:18,so4:45,cl:35,hco3:110},
-{name:"Hard Municipal Water",ca:110,mg:22,na:35,so4:90,cl:55,hco3:220},
-{name:"Well Water (High Bicarbonate)",ca:95,mg:18,na:28,so4:40,cl:30,hco3:260},
-{name:"West Coast IPA",ca:150,mg:15,na:10,so4:300,cl:55,hco3:50},
-{name:"Hazy IPA / NEIPA",ca:80,mg:5,na:10,so4:40,cl:140,hco3:50},
-{name:"American IPA Hoppy",ca:150,mg:10,na:10,so4:350,cl:50,hco3:50},
-{name:"American IPA Balanced",ca:110,mg:10,na:15,so4:130,cl:110,hco3:50},
-{name:"German Hefeweizen",ca:38,mg:8,na:8,so4:10,cl:15,hco3:90},
-{name:"English Bitter / ESB",ca:100,mg:15,na:30,so4:120,cl:65,hco3:200},
-{name:"Belgian Tripel",ca:60,mg:5,na:5,so4:30,cl:20,hco3:80},
-{name:"Stout / Porter Dark",ca:80,mg:20,na:30,so4:30,cl:80,hco3:300}
+,{name:"Fruit Beer",styleCode:"29A",fam:"Specialty",desc:"Any base beer with fruit added.",abvMin:0.030,abvMax:0.100,ibuMin:5,ibuMax:70,srmMin:1,srmMax:40,ogMin:1.030,ogMax:1.100,fgMin:1.000,fgMax:1.020}],WATER_PROFILES=[{name:"Burton-on-Trent",ca:268,mg:62,na:86,so4:638,cl:36,hco3:320},{name:"Dublin",ca:118,mg:4,na:12,so4:54,cl:19,hco3:319},{name:"Edinburgh",ca:100,mg:20,na:55,so4:140,cl:50,hco3:285},{name:"London",ca:52,mg:32,na:86,so4:32,cl:34,hco3:104},{name:"Munich",ca:75,mg:18,na:10,so4:72,cl:2,hco3:295},{name:"Dortmund",ca:225,mg:40,na:60,so4:120,cl:60,hco3:220},{name:"Pilsen",ca:10,mg:3,na:3,so4:4,cl:4,hco3:3},{name:"Vienna",ca:200,mg:60,na:8,so4:125,cl:12,hco3:120},{name:"Kolsch / Cologne",ca:65,mg:14,na:9,so4:68,cl:47,hco3:164},{name:"American (Generic Soft)",ca:45,mg:5,na:10,so4:30,cl:30,hco3:65},{name:"American IPA Hoppy",ca:150,mg:10,na:10,so4:350,cl:50,hco3:50},{name:"American IPA Balanced",ca:110,mg:10,na:15,so4:130,cl:110,hco3:50},{name:"NEIPA Juicy",ca:90,mg:5,na:10,so4:50,cl:150,hco3:60},{name:"Stout / Porter Dark",ca:80,mg:20,na:30,so4:30,cl:80,hco3:300},{name:"Distilled / RO Water",ca:0,mg:0,na:0,so4:0,cl:0,hco3:0},{name:"Yellow Balanced",ca:50,mg:5,na:10,so4:55,cl:45,hco3:35},{name:"Yellow Bitter",ca:75,mg:5,na:15,so4:150,cl:30,hco3:50},{name:"Amber Balanced",ca:75,mg:5,na:15,so4:80,cl:70,hco3:100},{name:"Brown Balanced",ca:75,mg:10,na:25,so4:60,cl:75,hco3:175},{name:"Robust Porter",ca:100,mg:10,na:30,so4:75,cl:85,hco3:225},{name:"Stout",ca:100,mg:10,na:40,so4:60,cl:95,hco3:280},{name:"Amsterdam",ca:74,mg:6,na:14,so4:65,cl:52,hco3:105},{name:"Paris",ca:87,mg:11,na:9,so4:38,cl:15,hco3:230},{name:"Prague",ca:7,mg:2,na:2,so4:5,cl:5,hco3:20},{name:"Belgium (Generic)",ca:91,mg:5,na:6,so4:22,cl:16,hco3:225},{name:"Czech Bohemian",ca:38,mg:7,na:4,so4:21,cl:28,hco3:110},{name:"Midlands (UK)",ca:70,mg:20,na:40,so4:50,cl:75,hco3:240},{name:"Midwest (Generic)",ca:80,mg:10,na:15,so4:60,cl:50,hco3:150},{name:"Pacific NW (Soft)",ca:12,mg:4,na:5,so4:10,cl:15,hco3:28},{name:"San Diego",ca:68,mg:22,na:97,so4:89,cl:79,hco3:213},{name:"Denver",ca:38,mg:10,na:12,so4:43,cl:28,hco3:103},{name:"Chicago",ca:110,mg:35,na:12,so4:70,cl:38,hco3:260},{name:"West Coast IPA",ca:150,mg:15,na:10,so4:300,cl:55,hco3:50},{name:"Hazy IPA / NEIPA",ca:80,mg:5,na:10,so4:40,cl:140,hco3:50},{name:"Belgian Tripel",ca:60,mg:5,na:5,so4:30,cl:20,hco3:80},{name:"German Hefeweizen",ca:38,mg:8,na:8,so4:10,cl:15,hco3:90},{name:"English Bitter / ESB",ca:100,mg:15,na:30,so4:120,cl:65,hco3:200},{name:"Cream Ale / Light Lager",ca:50,mg:5,na:10,so4:30,cl:30,hco3:55}],SOURCE_WATER_PROFILES=[{name:"Distilled / RO Water",ca:0,mg:0,na:0,so4:0,cl:0,hco3:0},{name:"Soft Municipal Water",ca:25,mg:4,na:8,so4:20,cl:18,hco3:45},{name:"Moderate Municipal Water",ca:55,mg:10,na:18,so4:45,cl:35,hco3:110},{name:"Hard Municipal Water",ca:110,mg:22,na:35,so4:90,cl:55,hco3:220},{name:"Well Water (High Bicarbonate)",ca:95,mg:18,na:28,so4:40,cl:30,hco3:260}],MASH_PROFILES=[
+  {name:"Single Infusion — Light Body",steps:[
+    {name:"Saccharification Rest",temp:"148°F",time:"60 min",desc:"Low saccharification temp favors beta-amylase; produces a dry, highly fermentable wort. Ideal for session ales, dry stouts, and IPAs."},
+    {name:"Mash Out",temp:"168°F",time:"10 min",desc:"Raises temp to halt enzyme activity and improve wort runoff viscosity."}
+  ]},
+  {name:"Single Infusion — Medium Body",steps:[
+    {name:"Saccharification Rest",temp:"152°F",time:"60 min",desc:"Balanced rest between beta and alpha amylase activity. Good all-purpose profile for pale ales, amber ales, and most American styles."},
+    {name:"Mash Out",temp:"168°F",time:"10 min",desc:"Raises temp to halt enzyme activity and improve wort runoff viscosity."}
+  ]},
+  {name:"Single Infusion — Full Body",steps:[
+    {name:"Saccharification Rest",temp:"156°F",time:"60 min",desc:"High temp favors alpha-amylase; produces a fuller, less fermentable wort. Ideal for stouts, porters, English ales, and malt-forward beers."},
+    {name:"Mash Out",temp:"168°F",time:"10 min",desc:"Raises temp to halt enzyme activity and improve wort runoff viscosity."}
+  ]},
+  {name:"Two-Step — Beta/Alpha",steps:[
+    {name:"Beta-Amylase Rest",temp:"145°F",time:"35 min",desc:"Beta-amylase is most active at 130–145°F; produces highly fermentable maltose. Yields a dry, attenuated wort."},
+    {name:"Alpha-Amylase Rest",temp:"158°F",time:"20 min",desc:"Alpha-amylase builds dextrins for body. Transition at ~154°F marks crossover zone."},
+    {name:"Mash Out",temp:"168°F",time:"10 min",desc:"Terminates enzyme activity; improves lautering runoff."}
+  ]},
+  {name:"Decoction — Single",steps:[
+    {name:"Protein Rest",temp:"122°F",time:"20 min",desc:"Breaks down large proteins. Optional for well-modified malts; important for undermodified or wheat-heavy grists."},
+    {name:"Saccharification Rest",temp:"152°F",time:"40 min",desc:"Primary conversion rest. Draw off ~1/3 of the thick mash, bring to boil for 15–20 min, return to main mash to hit mash-out temp."},
+    {name:"Mash Out",temp:"168°F",time:"10 min",desc:"Achieved via return of boiled decoction. Terminates enzyme activity."}
+  ]},
+  {name:"BIAB — Single Infusion",steps:[
+    {name:"Full-Volume Mash",temp:"152°F",time:"60 min",desc:"All water added at once in a single pot. No sparge. Squeeze bag to improve efficiency. Slightly lower expected efficiency vs. 3-vessel."},
+    {name:"Bag Lift & Drain",temp:"168°F",time:"15 min",desc:"Lift bag, allow to drain fully before squeezing. Keep bag above boil kettle to recapture drips."}
+  ]},
+  {name:"Hochkurz — Double",steps:[
+    {name:"Beta-Amylase Rest",temp:"144°F",time:"40 min",desc:"Standard Hochkurz lower rest at 144–148°F. Generates fermentable maltose; produces dry, attenuated lagers and Pilsners."},
+    {name:"Alpha-Amylase Rest",temp:"162°F",time:"20 min",desc:"Brief alpha rest adds residual body without excessive dextrins. Jump to 160–163°F for proper Hochkurz."},
+    {name:"Mash Out",temp:"168°F",time:"10 min",desc:"Terminates all enzyme activity before lautering."}
+  ]},
+  {name:"Step Mash — American Lager",steps:[
+    {name:"Cereal Mash (adjuncts)",temp:"158°F",time:"30 min",desc:"Cook corn or rice adjuncts separately to gelatinize starches before adding to main mash."},
+    {name:"Protein Rest",temp:"122°F",time:"20 min",desc:"Breaks proteins for clarity. Important when using significant adjuncts (>20%)."},
+    {name:"Saccharification Rest",temp:"148°F",time:"45 min",desc:"Dry, highly fermentable wort for a crisp, light-bodied lager."},
+    {name:"Mash Out",temp:"168°F",time:"10 min",desc:"Terminates enzyme activity and improves runoff."}
+  ]},
+  {name:"Turbid Mash (Lambic)",steps:[
+    {name:"Protein Rest",temp:"113°F",time:"15 min",desc:"Intentionally leaves proteins in wort for wild fermentation. Do NOT use Irish moss or protein rest clarifiers."},
+    {name:"First Saccharification",temp:"145°F",time:"45 min",desc:"Partial starch conversion — intentionally incomplete. Leaves unfermentable dextrins for Brettanomyces and bacteria."},
+    {name:"Second Saccharification",temp:"162°F",time:"20 min",desc:"Further conversion with additional dextrin development. Starchy runnings are desired."},
+    {name:"Sparge at Low Temp",temp:"150°F",time:"30 min",desc:"Low-temp sparge (150–155°F) intentionally preserves starches for wild fermentation by Brettanomyces."}
+  ]},
+  {name:"Ramp Infusion — Lager",steps:[
+    {name:"Protein Rest",temp:"122°F",time:"20 min",desc:"Important for traditional lager malts. Improves head retention and wort clarity. Skip for well-modified modern Pilsner malts."},
+    {name:"Saccharification Rest",temp:"150°F",time:"45 min",desc:"Slightly below mid-range for a drier, cleaner lager profile. Adjust to 148°F for very dry or 154°F for maltier finish."},
+    {name:"Mash Out",temp:"168°F",time:"10 min",desc:"Terminates enzyme activity. Essential for lager efficiency and consistent runoff."}
+  ]}
 ];let grainRows=[],hopRows=[],currentStyle=null,currentYeast=null;const f3=e=>(+e||0).toFixed(3),f2=e=>(+e||0).toFixed(2),f1=e=>(+e||0).toFixed(1),f0=e=>Math.round(+e||0),val=e=>{const t=document.getElementById(e);return t&&parseFloat(t.value)||0},sel=e=>{const t=document.getElementById(e);return t?t.value:""},set=(e,t)=>{const a=document.getElementById(e);a&&(a.textContent=t)},cls=(e,t)=>{const a=document.getElementById(e);a&&(a.className=a.className.replace(/\bpass\b|\bfail\b|\bwarn\b/g,""),t&&a.classList.add(t))};function sgToPlato(e){return!e||e<1.001?0:1111.14*e-616.868-630.272*e*e+135.997*e*e*e}function getSRMColor(e){const t=[[1,"#F8F754"],[2,"#F6F513"],[3,"#ECE61A"],[4,"#D5BC26"],[5,"#BF923B"],[6,"#BF813A"],[7,"#BC6733"],[8,"#8D4C32"],[9,"#6F3D2A"],[10,"#5D341A"],[12,"#4A2727"],[14,"#361F1B"],[17,"#261716"],[20,"#1F1010"],[24,"#160D0C"],[29,"#120B0A"],[35,"#0E0B0A"],[40,"#080707"],[50,"#080707"]];for(let a=t.length-1;a>=0;a--)if(e>=t[a][0])return t[a][1];return"#F8F754"}function getSRMName(e){return e<3?"Pale Straw":e<5?"Straw":e<7?"Gold":e<10?"Amber":e<14?"Copper":e<20?"Brown":e<28?"Dark Brown":e<35?"Very Dark":"Black"}function init(){hydrateLicenseState(),libMergeAll();const e=(new Date).toISOString().split("T")[0
 
 
@@ -6076,10 +6041,10 @@ window.bjcpGeneratorProfiles = {
     yeast:"US-05"
   },
   "Brown Ale": {
-    desc:"A malt-forward English brown ale with caramel, chocolate, and nutty notes with low to moderate bitterness.",
-    og:[1.040,1.052], fg:[1.008,1.013], ibu:[12,25], srm:[12,22],
-    grains:[{name:"Maris Otter Pale Malt",pct:80},{name:"Crystal / Caramel 60L",pct:10},{name:"Chocolate Malt",pct:5},{name:"Brown Malt",pct:5}],
-    hops:[{name:"Kent Golding (UK)",use:"60 min",amt:"0.75 oz"},{name:"Fuggle (UK)",use:"15 min",amt:"0.35 oz"}],
+    desc:"A malt-leaning brown ale with chocolate, nutty, or toast-like notes and restrained to moderate hop character.",
+    og:[1.044,1.060], fg:[1.009,1.016], ibu:[18,32], srm:[17,34],
+    grains:[{name:"Maris Otter Pale Malt", pct:78},{name:"Munich Malt", pct:8},{name:"Crystal / Caramel 60L", pct:7},{name:"Chocolate Malt", pct:4},{name:"Victory Malt", pct:3}],
+    hops:[{name:"Kent Golding (UK)", use:"60 min", amt:"0.80 oz"},{name:"Fuggle (UK)", use:"15 min", amt:"0.50 oz"}],
     yeast:"S-04"
   },
   "Dry Irish Stout": {
