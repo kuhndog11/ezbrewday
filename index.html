@@ -4843,6 +4843,46 @@ async function ensureCloudReady(){
   }
   return true;
 }
+
+// ── Inline prompt/confirm dialogs (replaces browser prompt/confirm which get blocked) ──
+function showInlinePrompt(title, defaultVal=''){
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+    wrap.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:380px;box-shadow:0 16px 48px rgba(0,0,0,.5)">
+      <div style="font-weight:700;font-size:15px;margin-bottom:12px;color:var(--text)">${title}</div>
+      <input id="_inline-prompt-input" type="text" value="${defaultVal.replace(/"/g,'&quot;')}" style="width:100%;margin-bottom:16px">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" id="_inline-prompt-cancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="_inline-prompt-ok">OK</button>
+      </div>
+    </div>`;
+    document.body.appendChild(wrap);
+    const input = wrap.querySelector('#_inline-prompt-input');
+    input.select();
+    const cleanup = val => { wrap.remove(); resolve(val); };
+    wrap.querySelector('#_inline-prompt-cancel').onclick = () => cleanup(null);
+    wrap.querySelector('#_inline-prompt-ok').onclick = () => cleanup(input.value.trim() || null);
+    input.onkeydown = e => { if(e.key==='Enter') cleanup(input.value.trim()||null); if(e.key==='Escape') cleanup(null); };
+  });
+}
+function showInlineConfirm(message){
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+    wrap.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:380px;box-shadow:0 16px 48px rgba(0,0,0,.5)">
+      <div style="font-size:14px;color:var(--text);margin-bottom:20px;line-height:1.5">${message}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" id="_inline-confirm-cancel">Cancel</button>
+        <button class="btn btn-danger btn-sm" id="_inline-confirm-ok">Delete</button>
+      </div>
+    </div>`;
+    document.body.appendChild(wrap);
+    const cleanup = val => { wrap.remove(); resolve(val); };
+    wrap.querySelector('#_inline-confirm-cancel').onclick = () => cleanup(false);
+    wrap.querySelector('#_inline-confirm-ok').onclick = () => cleanup(true);
+  });
+}
 async function cloudSaveCurrentRecipe(){
   if(!isProUser()){
     promptUpgrade('cloud');
@@ -4852,29 +4892,8 @@ async function cloudSaveCurrentRecipe(){
 
   const payload=collectCloudPayload();
   const proposedName=(payload.beerName||'Untitled Recipe').trim();
-  // Close cloud modal first so dialog appears on top
   closeCloudModal();
-  await new Promise(r=>setTimeout(r,100));
-  // Use inline name input instead of prompt()
-  const name = await new Promise(resolve => {
-    const existing = document.getElementById('cloud-save-name-wrap');
-    if(existing) existing.remove();
-    const wrap = document.createElement('div');
-    wrap.id = 'cloud-save-name-wrap';
-    wrap.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
-    wrap.innerHTML = `
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:400px;box-shadow:0 16px 48px rgba(0,0,0,.5)">
-        <div style="font-weight:700;font-size:15px;margin-bottom:12px;color:var(--text)">💾 Save Recipe to Cloud</div>
-        <input id="cloud-save-name-input" type="text" value="${proposedName}" placeholder="Recipe name" style="width:100%;margin-bottom:16px">
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cloud-save-name-wrap').remove();window._cloudSaveResolve(null)">Cancel</button>
-          <button class="btn btn-primary btn-sm" onclick="const v=document.getElementById('cloud-save-name-input').value.trim();document.getElementById('cloud-save-name-wrap').remove();window._cloudSaveResolve(v||'${proposedName}')">Save</button>
-        </div>
-      </div>`;
-    window._cloudSaveResolve = resolve;
-    document.body.appendChild(wrap);
-    setTimeout(()=>document.getElementById('cloud-save-name-input')?.select(), 50);
-  });
+  const name = await showInlinePrompt('💾 Save Recipe to Cloud', proposedName);
   if(!name){
     updateCloudStatus('Cloud save cancelled.','');
     return;
@@ -4912,18 +4931,7 @@ async function cloudSaveCurrentEquipmentProfile(){
 
   const proposed=((document.getElementById('bh-method')?.value || document.getElementById('brewMethod')?.value || 'Custom Equipment')+'').trim() || 'Custom Equipment';
   closeCloudModal();
-  await new Promise(r=>setTimeout(r,100));
-  const name = await new Promise(resolve => {
-    const existing = document.getElementById('cloud-save-name-wrap');
-    if(existing) existing.remove();
-    const wrap = document.createElement('div');
-    wrap.id = 'cloud-save-name-wrap';
-    wrap.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
-    wrap.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:400px;box-shadow:0 16px 48px rgba(0,0,0,.5)"><div style="font-weight:700;font-size:15px;margin-bottom:12px;color:var(--text)">💾 Save Equipment Profile to Cloud</div><input id="cloud-save-name-input" type="text" value="${proposed}" placeholder="Profile name" style="width:100%;margin-bottom:16px"><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-ghost btn-sm" onclick="document.getElementById('cloud-save-name-wrap').remove();window._cloudSaveResolve(null)">Cancel</button><button class="btn btn-primary btn-sm" onclick="const v=document.getElementById('cloud-save-name-input').value.trim();document.getElementById('cloud-save-name-wrap').remove();window._cloudSaveResolve(v||'${proposed}')">Save</button></div></div>`;
-    window._cloudSaveResolve = resolve;
-    document.body.appendChild(wrap);
-    setTimeout(()=>document.getElementById('cloud-save-name-input')?.select(),50);
-  });
+  const name = await showInlinePrompt('💾 Save Equipment Profile to Cloud', proposed);
   if(!name){
     updateCloudStatus('Cloud equipment profile save cancelled.','');
     return;
@@ -5092,8 +5100,21 @@ async function loadCloudRecipe(id){
     closeCloudModal();
   }
 }
-async function renameCloudRecipe(id){const item=(cloudState.recipes||[]).find(r=>r.id===id); if(!item) return; const name=prompt('Rename recipe:', item.name||''); if(!name) return; const {error}=await cloudState.client.from(CLOUD_TABLE).update({name,updated_at:new Date().toISOString()}).eq('id',id).eq('user_id',cloudState.user.id); if(error){updateCloudStatus(error.message,'bad'); return} updateCloudStatus('Recipe renamed.','ok'); refreshCloudRecipes();}
-async function deleteCloudRecipe(id){if(!confirm('Delete this cloud recipe?')) return; const {error}=await cloudState.client.from(CLOUD_TABLE).delete().eq('id',id).eq('user_id',cloudState.user.id); if(error){updateCloudStatus(error.message,'bad'); return} updateCloudStatus('Recipe deleted.','ok'); refreshCloudRecipes();}
+async function renameCloudRecipe(id){
+  const item=(cloudState.recipes||[]).find(r=>r.id===id); if(!item) return;
+  const name = await showInlinePrompt('Rename Recipe', item.name||'');
+  if(!name) return;
+  const {error}=await cloudState.client.from(CLOUD_TABLE).update({name,updated_at:new Date().toISOString()}).eq('id',id).eq('user_id',cloudState.user.id);
+  if(error){updateCloudStatus(error.message,'bad'); return}
+  updateCloudStatus('Recipe renamed.','ok'); refreshCloudRecipes();
+}
+async function deleteCloudRecipe(id){
+  const ok = await showInlineConfirm('Delete this cloud recipe? This cannot be undone.');
+  if(!ok) return;
+  const {error}=await cloudState.client.from(CLOUD_TABLE).delete().eq('id',id).eq('user_id',cloudState.user.id);
+  if(error){updateCloudStatus(error.message,'bad'); return}
+  updateCloudStatus('Recipe deleted.','ok'); refreshCloudRecipes();
+}
 
 function triggerJsonImport(){
   const input=document.getElementById('json-import-input');
