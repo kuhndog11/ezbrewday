@@ -1476,7 +1476,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
   </div>
 </div>
 
-<div class="modal-overlay" id="cloud-overlay">
+<div class="modal-overlay" id="cloud-overlay" aria-hidden="true">
   <div class="modal-card">
     <div class="modal-head">
       <div>
@@ -4453,6 +4453,43 @@ function hydrateBrandSettings(){
 }
 
 const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProfiles:[],proLicense:null};
+
+// ── Re-connect when user returns to this tab ─────────────────────────
+// cloudState is in-memory only. After switching tabs the Supabase SDK's
+// token-refresh timer may be throttled by the browser. This listener
+// calls connectSupabase() (now using getSession() = localStorage read,
+// no network needed) whenever the tab becomes visible or regains focus,
+// restoring cloudState.user so all buttons work again.
+(function(){
+  let _busy = false;
+  async function _tabReconnect(){
+    if(_busy){ console.log('[TabReconnect] skipped - already busy'); return; }
+    _busy = true;
+    console.log('[TabReconnect] starting. client='+!!cloudState.client+' user='+!!cloudState.user+' proLicense='+!!cloudState.proLicense);
+    try {
+      await connectSupabase(false);
+      console.log('[TabReconnect] after connectSupabase: user='+!!cloudState.user+' email='+(cloudState.user?.email||'none'));
+      if(cloudState.user){
+        await refreshServerProStatus(false);
+        console.log('[TabReconnect] after proStatus: proLicense='+!!cloudState.proLicense+' active='+(cloudState.proLicense?.active||false)+' isProUser='+isProUser());
+        updateCloudStatus('Connected as ' + cloudState.user.email, 'ok');
+        refreshCloudModalAccess();
+        refreshProUI();
+        forceUnlockCommunity();
+      } else {
+        console.log('[TabReconnect] no user after reconnect - session lost');
+      }
+    } catch(e){ console.warn('[CloudState] Tab reconnect error:', e.message); }
+    finally { _busy = false; }
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible') _tabReconnect();
+  });
+  // Belt-and-suspenders: mobile Safari doesn't always fire visibilitychange
+  window.addEventListener('focus', function(){ _tabReconnect(); });
+})();
+// ─────────────────────────────────────────────────────────────────────
+
 function cloudSel(id){return document.getElementById(id)}
 const HARD_SUPABASE_URL='https://txbkzksugiranyuckzje.supabase.co';
 const HARD_SUPABASE_ANON='sb_publishable_Xt4Up6gi124XdmPhQOm7qw_EJfNV77B';
@@ -4569,10 +4606,38 @@ async function showCloudLibrary(){
   }
 }
 
-function showCloudModal(){document.getElementById('cloud-overlay')?.classList.add('show'); refreshCloudModalAccess();}
+async function showCloudModal(){
+  document.getElementById('cloud-overlay')?.classList.add('show');
+  refreshCloudModalAccess();
+  // Re-establish session & proLicense when modal opens, so all buttons inside work
+  if(cloudState.client && !cloudState.user){
+    await connectSupabase(false);
+  }
+  if(cloudState.user && !cloudState.proLicense){
+    await refreshServerProStatus(false);
+    refreshCloudModalAccess();
+    refreshProUI();
+    forceUnlockCommunity();
+  }
+}
 function closeCloudModal(){document.getElementById('cloud-overlay')?.classList.remove('show');}
 function saveCloudConfig(){updateCloudStatus('Connection is configured automatically.','ok'); connectSupabase(true)}
-async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} if(cloudState.client){ const {data}=await cloudState.client.auth.getUser(); cloudState.user=data?.user||null; if(cloudState.user&&showMsg) updateCloudStatus('Connected as '+cloudState.user.email,'ok'); return true;} // Use memory storage if localStorage is blocked (e.g. Edge tracking prevention)
+async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} if(cloudState.client){
+  // FIX: Use getSession() first — reads localStorage with NO network call,
+  // surviving tab switches, background throttling, and file:// restrictions.
+  // Only fall back to getUser() (network) if local session is missing.
+  let _su=null;
+  try{ const {data:_sd}=await cloudState.client.auth.getSession(); _su=_sd?.session?.user||null; console.log('[connectSupabase] getSession result: user='+!!_su); }catch(e){console.warn('[connectSupabase] getSession threw:',e.message);_su=null;}
+  if(!_su){ 
+    console.log('[connectSupabase] getSession gave no user, trying getUser...');
+    try{ const {data:_ud}=await cloudState.client.auth.getUser(); _su=_ud?.user||null; console.log('[connectSupabase] getUser result: user='+!!_su); }catch(e){console.warn('[connectSupabase] getUser threw:',e.message);_su=null;} 
+  }
+  cloudState.user=_su;
+  console.log('[connectSupabase] final: cloudState.user='+!!cloudState.user+' email='+(cloudState.user?.email||'none'));
+  if(cloudState.user&&showMsg) updateCloudStatus('Connected as '+cloudState.user.email,'ok');
+  if(cloudState.user){ refreshCloudModalAccess(); refreshProUI(); }
+  return true;
+} // Use memory storage if localStorage is blocked (e.g. Edge tracking prevention)
 let sbStorage = undefined;
 try { localStorage.setItem('__sb_test','1'); localStorage.removeItem('__sb_test'); }
 catch(e) { sbStorage = { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} }; }
@@ -4823,15 +4888,10 @@ function applyCloudPayload(p){
   updateCloudStatus('Cloud recipe loaded into the current session.','ok');
 }
 async function ensureCloudReady(){
-  // If we already have a connected user and client, skip re-connecting
-  if(cloudState?.user && cloudState?.client) return true;
-  // Otherwise try to connect with a timeout
-  const connectPromise = connectSupabase(false);
-  const timeoutPromise = new Promise(r => setTimeout(() => r(false), 3000));
-  const connected = await Promise.race([connectPromise, timeoutPromise]);
+  console.log('[ensureCloudReady] client='+!!cloudState.client+' user='+!!cloudState.user+' proLicense='+!!cloudState.proLicense);
+  const connected = await connectSupabase(false);
+  console.log('[ensureCloudReady] after connectSupabase: connected='+connected+' user='+!!cloudState.user);
   if(!connected){
-    // Last resort — check if client exists even without fresh auth
-    if(cloudState?.client && cloudState?.user) return true;
     showCloudModal();
     updateCloudStatus('Could not connect your account. Please sign in again.','bad');
     return false;
@@ -4843,93 +4903,55 @@ async function ensureCloudReady(){
   }
   return true;
 }
-
-// ── Inline prompt/confirm dialogs (replaces browser prompt/confirm which get blocked) ──
-function showInlinePrompt(title, defaultVal=''){
-  return new Promise(resolve => {
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
-    wrap.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:380px;box-shadow:0 16px 48px rgba(0,0,0,.5)">
-      <div style="font-weight:700;font-size:15px;margin-bottom:12px;color:var(--text)">${title}</div>
-      <input id="_inline-prompt-input" type="text" value="${defaultVal.replace(/"/g,'&quot;')}" style="width:100%;margin-bottom:16px">
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn btn-ghost btn-sm" id="_inline-prompt-cancel">Cancel</button>
-        <button class="btn btn-primary btn-sm" id="_inline-prompt-ok">OK</button>
-      </div>
-    </div>`;
-    document.body.appendChild(wrap);
-    const input = wrap.querySelector('#_inline-prompt-input');
-    input.select();
-    const cleanup = val => { wrap.remove(); resolve(val); };
-    wrap.querySelector('#_inline-prompt-cancel').onclick = () => cleanup(null);
-    wrap.querySelector('#_inline-prompt-ok').onclick = () => cleanup(input.value.trim() || null);
-    input.onkeydown = e => { if(e.key==='Enter') cleanup(input.value.trim()||null); if(e.key==='Escape') cleanup(null); };
-  });
-}
-function showInlineConfirm(message){
-  return new Promise(resolve => {
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
-    wrap.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:380px;box-shadow:0 16px 48px rgba(0,0,0,.5)">
-      <div style="font-size:14px;color:var(--text);margin-bottom:20px;line-height:1.5">${message}</div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn btn-ghost btn-sm" id="_inline-confirm-cancel">Cancel</button>
-        <button class="btn btn-danger btn-sm" id="_inline-confirm-ok">Delete</button>
-      </div>
-    </div>`;
-    document.body.appendChild(wrap);
-    const cleanup = val => { wrap.remove(); resolve(val); };
-    wrap.querySelector('#_inline-confirm-cancel').onclick = () => cleanup(false);
-    wrap.querySelector('#_inline-confirm-ok').onclick = () => cleanup(true);
-  });
-}
 async function cloudSaveCurrentRecipe(){
+  console.log('[SaveRecipe] called. isProUser='+isProUser()+' cloudState.user='+!!cloudState.user+' proLicense='+!!cloudState.proLicense+' licenseState.valid='+!!licenseState.valid);
   if(!isProUser()){
+    console.log('[SaveRecipe] BLOCKED: isProUser() is false. licenseState.valid='+licenseState.valid+' proLicense=',cloudState.proLicense);
     promptUpgrade('cloud');
     return;
   }
-  if(!await ensureCloudReady()) return;
+  console.log('[SaveRecipe] isProUser passed, calling ensureCloudReady...');
+  if(!await ensureCloudReady()){
+    console.log('[SaveRecipe] BLOCKED: ensureCloudReady() returned false');
+    return;
+  }
+  console.log('[SaveRecipe] ensureCloudReady passed, proceeding to save...');
 
   const payload=collectCloudPayload();
   const proposedName=(payload.beerName||'Untitled Recipe').trim();
-  closeCloudModal();
-  const name = await showInlinePrompt('💾 Save Recipe to Cloud', proposedName);
+  const rawName=prompt('Recipe name for cloud save:', proposedName);
+  if(rawName===null){
+    updateCloudStatus('Cloud save cancelled.','');
+    return;
+  }
+  const name=(rawName||'').trim() || proposedName || 'Untitled Recipe';
   if(!name){
     updateCloudStatus('Cloud save cancelled.','');
+    return;
+  }
+
+  const row={
+    user_id:cloudState.user.id,
+    name,
+    payload,
+    updated_at:new Date().toISOString()
+  };
+
+  const {error}=await cloudState.client
+    .from(CLOUD_TABLE)
+    .upsert(row,{onConflict:'user_id,name'});
+
+  if(error){
+    updateCloudStatus('Cloud save failed: '+error.message,'bad');
     showCloudModal();
     return;
   }
 
-  updateCloudStatus('Saving...','');
-
-  try {
-    const row={
-      user_id:cloudState.user.id,
-      name,
-      payload,
-      updated_at:new Date().toISOString()
-    };
-
-    const {error}=await cloudState.client
-      .from(CLOUD_TABLE)
-      .upsert(row,{onConflict:'user_id,name'});
-
-    if(error){
-      console.error('Cloud save error:', error);
-      showCloudModal();
-      updateCloudStatus('Cloud save failed: '+error.message,'bad');
-      return;
-    }
-
-    updateCloudStatus('Cloud recipe saved: '+name,'ok');
-    showCloudModal();
-    await refreshCloudRecipes();
-    refreshCloudModalAccess();
-  } catch(e) {
-    console.error('Cloud save exception:', e);
-    showCloudModal();
-    updateCloudStatus('Cloud save error: '+e.message,'bad');
-  }
+  updateCloudStatus('Cloud recipe saved: '+name,'ok');
+  document.getElementById('cloud-overlay')?.classList.add('show');
+  await refreshCloudRecipes();
+  refreshCloudModalAccess();
+  try{ alert('Cloud recipe saved: '+name); }catch(e){}
 }
 
 async function cloudSaveCurrentEquipmentProfile(){
@@ -4940,8 +4962,12 @@ async function cloudSaveCurrentEquipmentProfile(){
   if(!await ensureCloudReady()) return;
 
   const proposed=((document.getElementById('bh-method')?.value || document.getElementById('brewMethod')?.value || 'Custom Equipment')+'').trim() || 'Custom Equipment';
-  closeCloudModal();
-  const name = await showInlinePrompt('💾 Save Equipment Profile to Cloud', proposed);
+  const rawName=prompt('Equipment profile name for cloud save:', proposed);
+  if(rawName===null){
+    updateCloudStatus('Cloud equipment profile save cancelled.','');
+    return;
+  }
+  const name=(rawName||'').trim() || proposed || 'Custom Equipment';
   if(!name){
     updateCloudStatus('Cloud equipment profile save cancelled.','');
     return;
@@ -5110,21 +5136,8 @@ async function loadCloudRecipe(id){
     closeCloudModal();
   }
 }
-async function renameCloudRecipe(id){
-  const item=(cloudState.recipes||[]).find(r=>r.id===id); if(!item) return;
-  const name = await showInlinePrompt('Rename Recipe', item.name||'');
-  if(!name) return;
-  const {error}=await cloudState.client.from(CLOUD_TABLE).update({name,updated_at:new Date().toISOString()}).eq('id',id).eq('user_id',cloudState.user.id);
-  if(error){updateCloudStatus(error.message,'bad'); return}
-  updateCloudStatus('Recipe renamed.','ok'); refreshCloudRecipes();
-}
-async function deleteCloudRecipe(id){
-  const ok = await showInlineConfirm('Delete this cloud recipe? This cannot be undone.');
-  if(!ok) return;
-  const {error}=await cloudState.client.from(CLOUD_TABLE).delete().eq('id',id).eq('user_id',cloudState.user.id);
-  if(error){updateCloudStatus(error.message,'bad'); return}
-  updateCloudStatus('Recipe deleted.','ok'); refreshCloudRecipes();
-}
+async function renameCloudRecipe(id){if(!await ensureCloudReady()) return; const item=(cloudState.recipes||[]).find(r=>r.id===id); if(!item) return; const name=prompt('Rename recipe:', item.name||''); if(!name) return; const {error}=await cloudState.client.from(CLOUD_TABLE).update({name,updated_at:new Date().toISOString()}).eq('id',id).eq('user_id',cloudState.user.id); if(error){updateCloudStatus(error.message,'bad'); return} updateCloudStatus('Recipe renamed.','ok'); await refreshCloudRecipes(); refreshCloudModalAccess();}
+async function deleteCloudRecipe(id){if(!await ensureCloudReady()) return; if(!confirm('Delete this cloud recipe?')) return; const {error}=await cloudState.client.from(CLOUD_TABLE).delete().eq('id',id).eq('user_id',cloudState.user.id); if(error){updateCloudStatus(error.message,'bad'); return} updateCloudStatus('Recipe deleted.','ok'); await refreshCloudRecipes(); refreshCloudModalAccess();}
 
 function triggerJsonImport(){
   const input=document.getElementById('json-import-input');
@@ -5275,7 +5288,10 @@ async function refreshServerProStatus(showMsg){
   refreshProUI();
   return cloudState.proLicense;
 }
-function isProUser(){return !!licenseState.valid || isServerProActive()}
+function isProUser(){
+  const result = !!licenseState.valid || isServerProActive();
+  return result;
+}
 
 function showUpgradeModal(){document.getElementById('upgrade-overlay')?.classList.add('show')}
 function closeUpgradeModal(){document.getElementById('upgrade-overlay')?.classList.remove('show')}
@@ -7138,23 +7154,7 @@ function applyGeneratedRecipe(){
   };
 
   if(document.readyState === 'loading'){
-    document.addEventListener('visibilitychange', async function(){
-  if(document.visibilityState === 'visible' && typeof cloudState !== 'undefined'){
-    // Re-verify session when user returns to tab (fixes tracking prevention drops)
-    if(cloudState?.client && !cloudState?.user){
-      try{
-        const {data:{session}} = await cloudState.client.auth.getSession();
-        if(session?.user){
-          cloudState.user = session.user;
-          if(typeof refreshCloudModalAccess === 'function') refreshCloudModalAccess();
-          if(typeof refreshProUI === 'function') refreshProUI();
-        }
-      }catch(e){}
-    }
-  }
-});
-
-document.addEventListener('DOMContentLoaded', function(){
+    document.addEventListener('DOMContentLoaded', function(){
       ensureIntentSelect();
       bindGenButton();
     });
@@ -11890,7 +11890,7 @@ if(_origRefreshProUI){
     }
   </style>
 
-  <div class="modal-overlay" id="community-overlay">
+  <div class="modal-overlay" id="community-overlay" aria-hidden="true">
     <div class="modal-card" style="max-width:900px;width:100%">
       <div class="modal-head">
         <div style="display:flex;align-items:center;gap:14px">
