@@ -259,7 +259,7 @@ td select{padding:3px 6px;font-size:12px;border-radius:5px}
 .wf-log-item{padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg3)}
 .wf-log-item strong{color:var(--text)}
 .wf-muted{color:var(--text3);font-size:11px}
-.wf-float{position:fixed;left:16px;right:16px;bottom:16px;z-index:500;background:rgba(22,27,38,.96);border:1px solid var(--border2);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.35);backdrop-filter:blur(10px);padding:10px 12px;display:none;flex-direction:column;gap:10px}
+.wf-float{position:fixed;left:16px;right:16px;bottom:16px;z-index:500;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.35);backdrop-filter:blur(10px);padding:10px 12px;display:none;flex-direction:column;gap:10px}
 .wf-float.show{display:flex}
 .wf-float-handle{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;cursor:move;user-select:none}
 .wf-float-handle-label{font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase}
@@ -4009,6 +4009,7 @@ function applyThemePreset(name,save){
     const tcc=getTapCustomColors();
     if(tcc && Object.values(tcc).some(Boolean)) applyTapCustomColors();
   }
+  if(typeof _syncFloatingTimerColors==='function') _syncFloatingTimerColors();
 }
 function applyBrandingPreview(){
   const title=(document.getElementById('brandTitle')?.value||'').trim()||DEFAULT_BRAND_TITLE;
@@ -4082,6 +4083,17 @@ const COLOR_MAP = [
 
 // Apply only the SAVED custom colors (reads from localStorage, not pickers)
 // This is the only function that sets CSS vars — called after theme changes too
+function _syncFloatingTimerColors(){
+  // Force the floating timer to re-read CSS variables after a theme change.
+  // Most colors already use var(--x) — this handles any inline overrides.
+  const f = document.getElementById('wf-float');
+  if(!f) return;
+  // Re-apply background from current --bg2 computed value
+  const bg2 = getComputedStyle(document.documentElement).getPropertyValue('--bg2').trim();
+  if(bg2) f.style.background = bg2;
+  const border2 = getComputedStyle(document.documentElement).getPropertyValue('--border2').trim();
+  if(border2) f.style.borderColor = border2;
+}
 function applyCustomColors(){
   // No Pro check here — apply whatever is saved (Pro gate is at save time)
   const vals = getCustomColors();
@@ -4119,6 +4131,7 @@ function applyCustomColors(){
     root.style.setProperty('--fontsize', vals['cc-fontsize']);
     injectFontSizeOverride(vals['cc-fontsize']);
   }
+  if(typeof _syncFloatingTimerColors==='function') _syncFloatingTimerColors();
 }
 
 // Live preview: called by the color picker's oninput to preview one color instantly
@@ -4463,24 +4476,32 @@ const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProf
 (function(){
   let _busy = false;
   async function _tabReconnect(){
-    if(_busy){ console.log('[TabReconnect] skipped - already busy'); return; }
+    if(_busy) return;
     _busy = true;
-    console.log('[TabReconnect] starting. client='+!!cloudState.client+' user='+!!cloudState.user+' proLicense='+!!cloudState.proLicense);
     try {
+      // Step 1: Restore session from localStorage (fast, no network)
       await connectSupabase(false);
-      console.log('[TabReconnect] after connectSupabase: user='+!!cloudState.user+' email='+(cloudState.user?.email||'none'));
       if(cloudState.user){
-        await refreshServerProStatus(false);
-        console.log('[TabReconnect] after proStatus: proLicense='+!!cloudState.proLicense+' active='+(cloudState.proLicense?.active||false)+' isProUser='+isProUser());
         updateCloudStatus('Connected as ' + cloudState.user.email, 'ok');
         refreshCloudModalAccess();
         refreshProUI();
         forceUnlockCommunity();
-      } else {
-        console.log('[TabReconnect] no user after reconnect - session lost');
       }
     } catch(e){ console.warn('[CloudState] Tab reconnect error:', e.message); }
-    finally { _busy = false; }
+    finally {
+      // Release the busy lock immediately after session restore
+      // so Save clicks are never blocked by the background pro-status fetch
+      _busy = false;
+    }
+    // Step 2: Refresh pro license in background (slow DB query, cached after first call)
+    // Runs AFTER _busy is released so it never blocks button clicks
+    if(cloudState.user){
+      refreshServerProStatus(false).then(()=>{
+        refreshCloudModalAccess();
+        refreshProUI();
+        forceUnlockCommunity();
+      }).catch(e=>console.warn('[CloudState] Pro status refresh failed:', e.message));
+    }
   }
   document.addEventListener('visibilitychange', function(){
     if(document.visibilityState === 'visible') _tabReconnect();
@@ -4609,15 +4630,18 @@ async function showCloudLibrary(){
 async function showCloudModal(){
   document.getElementById('cloud-overlay')?.classList.add('show');
   refreshCloudModalAccess();
-  // Re-establish session & proLicense when modal opens, so all buttons inside work
+  // Re-establish session if needed (fast - reads localStorage)
   if(cloudState.client && !cloudState.user){
     await connectSupabase(false);
-  }
-  if(cloudState.user && !cloudState.proLicense){
-    await refreshServerProStatus(false);
     refreshCloudModalAccess();
-    refreshProUI();
-    forceUnlockCommunity();
+  }
+  // Refresh pro license in background if missing or cache is cold
+  if(cloudState.user){
+    refreshServerProStatus(false).then(()=>{
+      refreshCloudModalAccess();
+      refreshProUI();
+      forceUnlockCommunity();
+    }).catch(()=>{});
   }
 }
 function closeCloudModal(){document.getElementById('cloud-overlay')?.classList.remove('show');}
@@ -5076,7 +5100,7 @@ function renderCloudRecipes(){
   }
   list.innerHTML=items.map(item=>{
     const updated=item.updated_at?new Date(item.updated_at).toLocaleString():'';
-    const meta=item.payload?.meta?.version?` · ${escapeHtml(item.payload.meta.version)}`:'';
+    const meta='';
     return `<div class="saved-item">
       <div>
         <div class="saved-item-title">${escapeHtml(item.name||'Untitled Recipe')}</div>
@@ -5270,6 +5294,15 @@ async function refreshServerProStatus(showMsg){
     refreshProUI();
     return null;
   }
+  // Cache: skip the DB query if we checked within the last 5 minutes
+  // and already have a valid license. This prevents repeated network
+  // calls on every tab switch which caused the 10-second delay + stacking.
+  const CACHE_MS = 5 * 60 * 1000;
+  const now = Date.now();
+  if(!showMsg && cloudState.proLicense && cloudState._proStatusCheckedAt &&
+     (now - cloudState._proStatusCheckedAt) < CACHE_MS){
+    return cloudState.proLicense;
+  }
   const {data,error}=await cloudState.client
     .from('pro_licenses')
     .select('id,email,plan,status,starts_at,expires_at,license_key,user_id')
@@ -5277,11 +5310,12 @@ async function refreshServerProStatus(showMsg){
   if(error){
     console.warn('pro_licenses check failed', error);
     if(showMsg) updateCloudStatus('Could not verify Pro status from server: '+error.message,'bad');
-    cloudState.proLicense=null;
-    refreshProUI();
-    return null;
+    // Don't clear proLicense on error if we already have one — keep using cached value
+    if(!cloudState.proLicense) refreshProUI();
+    return cloudState.proLicense||null;
   }
   cloudState.proLicense=getBestVisibleProLicense(data||[]);
+  cloudState._proStatusCheckedAt = now;
   if(showMsg && cloudState.proLicense?.active){
     updateCloudStatus('Pro verified through license admin table.','ok');
   }
