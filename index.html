@@ -1385,40 +1385,26 @@ button[onclick="connectSupabase(true)"]{display:none!important}
 /* ── Live Brew Simulation Step Tracker ── */
 .wf-sim-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;margin-bottom:18px;position:relative;overflow:hidden}
 .wf-sim-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--teal),var(--teal2));opacity:.7}
-.wf-sim-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.wf-sim-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .wf-sim-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);font-family:var(--mono)}
-.wf-sim-status{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text3);font-family:var(--mono)}
-.wf-sim-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.wf-sim-status{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text3)}
+.wf-sim-dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
 .wf-sim-dot.running{background:var(--teal);box-shadow:0 0 6px rgba(20,184,166,.6);animation:wf-pulse 1.2s ease-in-out infinite}
-@keyframes wf-pulse{0%,100%{opacity:1}50%{opacity:.35}}
-/* Windowed track wrapper */
-.wf-sim-track-wrap{display:flex;align-items:center;gap:6px;margin-bottom:10px}
-.wf-sim-nav{background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:13px;cursor:pointer;width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s;padding:0;line-height:1}
-.wf-sim-nav:hover:not(:disabled){border-color:var(--teal);color:var(--teal)}
-.wf-sim-nav:disabled{opacity:.25;cursor:default}
-/* The visible window — clips overflow, no scrollbar */
-.wf-sim-track{flex:1;overflow:hidden;position:relative;min-width:0}
-.wf-sim-track-inner{display:flex;align-items:flex-start;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;min-width:0}
-/* Each step cell — fixed width so arithmetic is easy */
-.wf-sim-step{display:flex;flex-direction:column;align-items:center;width:80px;min-width:80px;flex-shrink:0;position:relative;cursor:pointer}
-.wf-sim-step-row{display:flex;align-items:center;width:100%}
-.wf-sim-line{flex:1;height:2px;background:var(--border2);transition:background .3s}
-.wf-sim-line.done{background:var(--teal)}
-.wf-sim-line.hidden{visibility:hidden}
-.wf-sim-node{width:12px;height:12px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);flex-shrink:0;transition:all .3s}
+@keyframes wf-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.wf-sim-track{display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none}
+.wf-sim-track::-webkit-scrollbar{display:none}
+.wf-sim-step{display:flex;flex-direction:column;align-items:center;position:relative;min-width:60px;flex:1}
+.wf-sim-step-line{flex:1;height:2px;background:var(--border2);margin-top:-14px;z-index:0}
+.wf-sim-step-line.done{background:var(--teal)}
+.wf-sim-node{width:12px;height:12px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);z-index:1;transition:all .3s;flex-shrink:0;cursor:pointer}
 .wf-sim-node.done{background:var(--teal2);border-color:var(--teal)}
-.wf-sim-node.active{background:var(--teal);border-color:var(--teal);box-shadow:0 0 0 4px rgba(20,184,166,.2);width:14px;height:14px;animation:wf-node-pulse 1.4s ease-in-out infinite}
-@keyframes wf-node-pulse{0%,100%{box-shadow:0 0 0 4px rgba(20,184,166,.2)}50%{box-shadow:0 0 0 7px rgba(20,184,166,.08)}}
-.wf-sim-lbl{font-size:9.5px;color:var(--text3);margin-top:5px;text-align:center;width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;padding:0 2px}
-.wf-sim-lbl.active{color:var(--teal);font-weight:700}
-.wf-sim-lbl.done{color:var(--text2)}
-/* Active info bar */
-.wf-sim-active-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--bg3);border-radius:6px;border:1px solid rgba(20,184,166,.15)}
-.wf-sim-active-name{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--teal);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.wf-sim-clock{font-family:var(--mono);font-size:18px;font-weight:600;color:var(--text);letter-spacing:.04em;flex-shrink:0}
-.wf-sim-badge{font-size:10px;color:var(--text3);padding:2px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:4px;white-space:nowrap;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em}
-/* Step counter pill */
-.wf-sim-counter{font-family:var(--mono);font-size:10px;color:var(--text3);white-space:nowrap;flex-shrink:0}
+.wf-sim-node.active{background:var(--teal);border-color:var(--teal);box-shadow:0 0 0 3px rgba(20,184,166,.25);width:14px;height:14px}
+.wf-sim-node-label{font-size:9px;color:var(--text3);margin-top:5px;text-align:center;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+.wf-sim-node-label.active{color:var(--teal);font-weight:600}
+.wf-sim-node-label.done{color:var(--text2)}
+.wf-sim-active-bar{display:flex;align-items:center;gap:12px;margin-top:10px;padding:8px 12px;background:var(--bg3);border-radius:6px;border:1px solid rgba(20,184,166,.15)}
+.wf-sim-active-name{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--teal)}
+.wf-sim-active-badge{font-size:10.5px;color:var(--text3);padding:2px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:4px;white-space:nowrap}
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onload="window._pdfReady=true" onerror="window._pdfReady=false">
@@ -2397,27 +2383,15 @@ button[onclick="connectSupabase(true)"]{display:none!important}
       <div class="wf-sim-status">
         <div class="wf-sim-dot" id="wf-sim-dot"></div>
         <span id="wf-sim-status-text">IDLE</span>
-        <span class="wf-sim-counter" id="wf-sim-counter" style="margin-left:8px"></span>
       </div>
     </div>
-    <!-- Windowed step timeline -->
-    <div class="wf-sim-track-wrap">
-      <button type="button" class="wf-sim-nav" id="wf-sim-prev" onclick="wfSimScroll(-1)" disabled>&#8249;</button>
-      <div class="wf-sim-track" id="wf-sim-track">
-        <div class="wf-sim-track-inner" id="wf-sim-track-inner">
-          <div class="wf-sim-step">
-            <div class="wf-sim-step-row"><div class="wf-sim-line hidden"></div><div class="wf-sim-node"></div><div class="wf-sim-line hidden"></div></div>
-            <div class="wf-sim-lbl" style="color:var(--text3)">Build workflow</div>
-          </div>
-        </div>
-      </div>
-      <button type="button" class="wf-sim-nav" id="wf-sim-next" onclick="wfSimScroll(1)" disabled>&#8250;</button>
+    <div class="wf-sim-track" id="wf-sim-track">
+      <div style="color:var(--text3);font-size:11px;padding:4px">Build workflow to see steps</div>
     </div>
-    <!-- Active step info bar -->
     <div class="wf-sim-active-bar">
-      <span class="wf-sim-badge" id="wf-sim-badge">IDLE</span>
-      <span class="wf-sim-active-name" id="wf-sim-active-name">Build workflow to begin</span>
-      <span class="wf-sim-clock" id="wf-sim-clock">—</span>
+      <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Active:</span>
+      <span class="wf-sim-active-name" id="wf-sim-active-name">Build workflow</span>
+      <span class="wf-sim-active-badge" id="wf-sim-active-badge">Manual</span>
     </div>
   </div>
 
@@ -3248,192 +3222,88 @@ function enableWorkflowFloatDrag(){
 
 let workflowSteps=[],workflowState={index:0,remaining:0,running:!1,timer:null,stepDuration:0,lastBuiltAt:null,alarmActive:!1,alarmTimer:null,audioCtx:null,stepStartWallTime:null,stepActualLog:{}};function parseTimeToMinutes(e){if(!e)return 0;const t=String(e).match(/(\d+)\s*min/i);return t?parseInt(t[1],10):0}function formatClock(e){const t=Math.max(0,Math.round(e||0));return`${String(Math.floor(t/60)).padStart(2,"0")}:${String(t%60).padStart(2,"0")}`}function inferChillTargetTemp(){const e=val("wf-chill-temp");if(e>0)return e;const t=document.getElementById("yi-temp")?.textContent||"",a=t.match(/(\d+)\s*-\s*(\d+)/);if(a)return parseInt(a[1],10);const n=t.match(/(\d+)/);return n?parseInt(n[1],10):68}function collectHopEvents(){val("bh-boil-time");const e=[];return document.querySelectorAll('[id^="hop-row-"]').forEach(t=>{const a=t.id.replace("hop-row-",""),n=sel(`h-name-${a}`)||"Hop Addition",o=val(`h-oz-${a}`)||0,l=sel(`h-sched-${a}`)||"",i=document.getElementById(`h-notes-${a}`)?.value||"";if(o<=0)return;const s=l.toLowerCase();if(s.includes("dry"))return void e.push({key:`dry-${a}`,label:`Dry hop — ${n}`,remain:-999,type:"post",desc:`Add ${f2(o)} oz ${n} during dry hop. ${i}`.trim()});if(s.includes("whirlpool"))return void e.push({key:`wp-${a}`,label:`Whirlpool hop — ${n}`,remain:0,type:"whirlpool",desc:`Add ${f2(o)} oz ${n} at whirlpool. ${i}`.trim()});if(s.includes("flameout")||s.startsWith("0 min"))return void e.push({key:`fo-${a}`,label:`Flameout hop — ${n}`,remain:0,type:"flameout",desc:`Add ${f2(o)} oz ${n} at flameout. ${i}`.trim()});const r=parseSchedule(l);e.push({key:`boil-${a}`,label:`Add ${n}`,remain:r,type:"boil",desc:`Add ${f2(o)} oz ${n} with ${r} min left in the boil. ${i}`.trim()})}),e.sort((e,t)=>"post"===e.type?1:"post"===t.type?-1:(t.remain||0)-(e.remain||0))}
 // ── Live Brew Simulation Tracker ──────────────────────────────────
-// ── Live Brew Simulation Tracker — windowed ───────────────────────
-(function(){
-  // How many steps visible at once (odd number keeps active centered)
-  const VISIBLE=5;
-  // Cell width in px — must match CSS .wf-sim-step width
-  const CELL_W=80;
-  // Holds the condensed display-step list (rebuilt each buildWorkflow)
-  let _wfDisplaySteps=[];
-  // Current window offset (index of leftmost visible display step)
-  let _wfWinOffset=0;
-
-  function _shortLabel(name){
-    return name
-      .replace(/Bring wort to boil/i,'Bring wort')
-      .replace(/Recirculate \/ vorlauf/i,'Vorlauf')
-      .replace(/Mash in \/ dough in/i,'Mash in')
-      .replace(/Boil countdown.*$/i,'Boil')
-      .replace(/Dry hop reminder/i,'Dry Hop')
-      .replace(/Whirlpool hold/i,'Whirlpool')
-      .replace(/\s+/g,' ')
-      .trim();
+function renderWfSimTracker(){
+  const track=document.getElementById('wf-sim-track');
+  const activeName=document.getElementById('wf-sim-active-name');
+  const activeBadge=document.getElementById('wf-sim-active-badge');
+  const simDot=document.getElementById('wf-sim-dot');
+  const simStatus=document.getElementById('wf-sim-status-text');
+  if(!track) return;
+  if(!workflowSteps.length){
+    track.innerHTML='<div style="color:var(--text3);font-size:11px;padding:4px">Build workflow to see steps</div>';
+    if(activeName) activeName.textContent='Build workflow';
+    if(activeBadge) activeBadge.textContent='Manual';
+    if(simDot){simDot.classList.remove('running');}
+    if(simStatus) simStatus.textContent='IDLE';
+    return;
   }
-
-  function _buildDisplaySteps(){
-    _wfDisplaySteps=[];
-    let boilGroup=null;
-    workflowSteps.forEach((s,i)=>{
-      const n=s.name.toLowerCase();
-      if(n.includes('boil countdown')){
-        if(!boilGroup){
-          boilGroup={name:'Boil',indices:[i],type:'boil'};
-          _wfDisplaySteps.push(boilGroup);
-        } else boilGroup.indices.push(i);
-      } else {
-        boilGroup=null;
-        _wfDisplaySteps.push({name:s.name,indices:[i],type:s.duration>0?'timed':'manual'});
-      }
-    });
-  }
-
-  function _activeDisplayIdx(){
-    const idx=workflowState.index;
-    for(let di=0;di<_wfDisplaySteps.length;di++){
-      if(_wfDisplaySteps[di].indices.includes(idx)) return di;
-    }
-    return 0;
-  }
-
-  function _clampOffset(offset,activeIdx){
-    const total=_wfDisplaySteps.length;
-    if(total<=VISIBLE) return 0;
-    // Center the active step
-    let ideal=activeIdx-Math.floor(VISIBLE/2);
-    ideal=Math.max(0,Math.min(ideal,total-VISIBLE));
-    // If manually scrolled, respect it unless active goes out of window
-    let o=Math.max(0,Math.min(offset,total-VISIBLE));
-    // Clamp so active is always visible
-    if(activeIdx<o) o=activeIdx;
-    if(activeIdx>=o+VISIBLE) o=activeIdx-VISIBLE+1;
-    return o;
-  }
-
-  function _renderCells(activeIdx){
-    const inner=document.getElementById('wf-sim-track-inner');
-    if(!inner) return;
-    const total=_wfDisplaySteps.length;
-    if(!total){
-      inner.innerHTML='<div class="wf-sim-step"><div class="wf-sim-step-row"><div class="wf-sim-line hidden"></div><div class="wf-sim-node"></div><div class="wf-sim-line hidden"></div></div><div class="wf-sim-lbl" style="color:var(--text3)">Build workflow</div></div>';
-      return;
-    }
-    inner.innerHTML=_wfDisplaySteps.map((ds,di)=>{
-      const isDone=di<activeIdx;
-      const isAct=di===activeIdx;
-      const nodeC='wf-sim-node'+(isDone?' done':isAct?' active':'');
-      const lblC='wf-sim-lbl'+(isDone?' done':isAct?' active':'');
-      const leftLineC='wf-sim-line'+(isDone||isAct?' done':'')+(di===0?' hidden':'');
-      const rightLineC='wf-sim-line'+(isDone?' done':'')+(di===total-1?' hidden':'');
-      let lbl=_shortLabel(ds.name);
-      if(lbl.length>11) lbl=lbl.substring(0,10)+'…';
-      return `<div class="wf-sim-step" title="${ds.name}" onclick="wfSimJump(${di})" style="cursor:pointer">
-  <div class="wf-sim-step-row"><div class="${leftLineC}"></div><div class="${nodeC}"></div><div class="${rightLineC}"></div></div>
-  <div class="${lblC}">${lbl}</div>
-</div>`;
-    }).join('');
-  }
-
-  function _applyTransform(){
-    const inner=document.getElementById('wf-sim-track-inner');
-    const track=document.getElementById('wf-sim-track');
-    if(!inner||!track) return;
-    const total=_wfDisplaySteps.length;
-    // If fewer steps than visible, no translation needed
-    if(total<=VISIBLE){
-      inner.style.transform='translateX(0)';
-      return;
-    }
-    // Translate so _wfWinOffset steps are hidden to the left
-    inner.style.transform=`translateX(${-_wfWinOffset*CELL_W}px)`;
-  }
-
-  function _updateNavBtns(activeIdx){
-    const prev=document.getElementById('wf-sim-prev');
-    const next=document.getElementById('wf-sim-next');
-    const total=_wfDisplaySteps.length;
-    if(!prev||!next) return;
-    if(total<=VISIBLE){
-      prev.disabled=true; next.disabled=true; return;
-    }
-    prev.disabled=(_wfWinOffset<=0);
-    next.disabled=(_wfWinOffset>=total-VISIBLE);
-  }
-
-  function _updateInfoBar(){
-    const idx=workflowState.index;
-    const curStep=workflowSteps[idx];
-    const running=workflowState.running;
-    const simDot=document.getElementById('wf-sim-dot');
-    const simStatus=document.getElementById('wf-sim-status-text');
-    const activeName=document.getElementById('wf-sim-active-name');
-    const clock=document.getElementById('wf-sim-clock');
-    const badge=document.getElementById('wf-sim-badge');
-    const counter=document.getElementById('wf-sim-counter');
-    const total=workflowSteps.length;
-
-    // Status dot + text
-    if(simDot){
-      if(running) simDot.classList.add('running');
-      else simDot.classList.remove('running');
-    }
-    const statusTxt=running?'RUNNING':idx>0?'PAUSED':'IDLE';
-    if(simStatus) simStatus.textContent=statusTxt;
-    if(badge) badge.textContent=statusTxt;
-
-    // Step name
-    if(activeName) activeName.textContent=curStep?curStep.name:'Build workflow to begin';
-
-    // Clock
-    if(clock){
-      if(!curStep){ clock.textContent='—'; }
-      else if(curStep.duration>0){ clock.textContent=formatClock(workflowState.remaining); }
-      else { clock.textContent='Manual'; }
-    }
-
-    // Counter
-    if(counter && total>0) counter.textContent=`${idx+1} / ${total}`;
-    else if(counter) counter.textContent='';
-  }
-
-  // Public: called from updateWorkflowUI
-  window.renderWfSimTracker=function(){
-    _buildDisplaySteps();
-    const activeIdx=_activeDisplayIdx();
-    // Auto-center window on active step (smooth)
-    if(_wfDisplaySteps.length>VISIBLE){
-      _wfWinOffset=_clampOffset(_wfWinOffset,activeIdx);
+  const idx=workflowState.index;
+  const running=workflowState.running;
+  // Key steps to show on the tracker (collapse boil countdowns)
+  const KEY_NAMES=['heat strike','mash in','vorlauf','sparge','bring wort','boil','chill wort','dry hop'];
+  function isKeyStep(s){const n=s.name.toLowerCase();return KEY_NAMES.some(k=>n.includes(k))||s.duration>0}
+  // Build a condensed list for display — show every step but abbreviate boil segments
+  const displaySteps=[];
+  let boilGroup=null;
+  workflowSteps.forEach((s,i)=>{
+    const n=s.name.toLowerCase();
+    if(n.includes('boil countdown')){
+      if(!boilGroup){boilGroup={name:'Boil',indices:[i],type:'boil'};displaySteps.push(boilGroup);}
+      else boilGroup.indices.push(i);
     } else {
-      _wfWinOffset=0;
+      boilGroup=null;
+      displaySteps.push({name:s.name,indices:[i],type:s.duration>0?'timed':'manual'});
     }
-    _renderCells(activeIdx);
-    _applyTransform();
-    _updateNavBtns(activeIdx);
-    _updateInfoBar();
-  };
-
-  // Public: arrow button handler
-  window.wfSimScroll=function(dir){
-    const total=_wfDisplaySteps.length;
-    _wfWinOffset=Math.max(0,Math.min(_wfWinOffset+dir,total-VISIBLE));
-    _applyTransform();
-    _updateNavBtns(_activeDisplayIdx());
-  };
-
-  // Public: click a dot to jump
-  window.wfSimJump=function(displayIdx){
-    if(!_wfDisplaySteps[displayIdx]) return;
-    const targetIdx=_wfDisplaySteps[displayIdx].indices[0];
-    if(targetIdx<0||targetIdx>=workflowSteps.length) return;
-    pauseWorkflow();
-    workflowState.index=targetIdx;
-    const step=workflowSteps[targetIdx];
-    workflowState.remaining=step?.duration||0;
-    workflowState.stepDuration=step?.duration||0;
-    renderWorkflowSteps();
-    updateWorkflowUI();
-  };
-})();
+  });
+  // Determine active display step
+  let activeDisplayIdx=0;
+  displaySteps.forEach((ds,di)=>{
+    if(ds.indices.includes(idx)) activeDisplayIdx=di;
+  });
+  // Render
+  const html=displaySteps.map((ds,di)=>{
+    const isDone=di<activeDisplayIdx;
+    const isActive=di===activeDisplayIdx;
+    const nodeClass='wf-sim-node'+(isDone?' done':isActive?' active':'');
+    const labelClass='wf-sim-node-label'+(isDone?' done':isActive?' active':'');
+    const lineClass='wf-sim-step-line'+(isDone||isActive?' done':'');
+    const line=di<displaySteps.length-1?`<div style="flex:1;height:2px;background:${isDone||isActive?'var(--teal)':'var(--border2)'};margin-top:-7px;z-index:0;min-width:12px"></div>`:'';
+    // Short label
+    let lbl=ds.name.replace(/Bring wort to boil/i,'Bring wort').replace(/Recirculate \/ vorlauf/i,'Vorlauf').replace(/Mash in \/ dough in/i,'Mash in').replace(/Boil countdown.*$/i,'Boil').replace(/\s+/g,' ');
+    if(lbl.length>10) lbl=lbl.substring(0,9)+'…';
+    return `<div class="wf-sim-step" title="${ds.name}">
+      <div style="display:flex;align-items:center;width:100%">
+        ${di>0?`<div style="flex:1;height:2px;background:${isDone?'var(--teal)':'var(--border2)'};z-index:0"></div>`:''}
+        <div class="${nodeClass}" onclick="wfJumpToDisplayStep(${JSON.stringify(ds.indices)})"></div>
+        ${di<displaySteps.length-1?`<div style="flex:1;height:2px;background:${isDone||isActive?'var(--teal)':'var(--border2)'};z-index:0"></div>`:''}
+      </div>
+      <div class="${labelClass}">${lbl}</div>
+    </div>`;
+  }).join('');
+  track.innerHTML=html;
+  // Update active bar
+  const curStep=workflowSteps[idx];
+  if(activeName && curStep) activeName.textContent=curStep.name;
+  if(activeBadge && curStep) activeBadge.textContent=curStep.duration>0?formatClock(workflowState.remaining):'Manual';
+  // Status dot
+  if(simDot){
+    if(running){simDot.classList.add('running');} 
+    else {simDot.classList.remove('running');}
+  }
+  if(simStatus) simStatus.textContent=running?'RUNNING':workflowState.index>0?'PAUSED':'IDLE';
+}
+function wfJumpToDisplayStep(indices){
+  if(!indices||!indices.length) return;
+  const targetIdx=indices[0];
+  if(targetIdx<0||targetIdx>=workflowSteps.length) return;
+  pauseWorkflow();
+  workflowState.index=targetIdx;
+  const step=workflowSteps[targetIdx];
+  workflowState.remaining=step?.duration||0;
+  workflowState.stepDuration=step?.duration||0;
+  renderWorkflowSteps();
+  updateWorkflowUI();
+}
 // ── End Live Brew Simulation Tracker ──────────────────────────────
 
 function buildWorkflow(){const e=document.getElementById("wf-chill-temp");e&&(!e.value||+e.value<=0)&&(e.value=inferChillTargetTemp());const t=[];let a=1;const n=document.getElementById("res-strike-vol")?.textContent||"—",o=document.getElementById("res-strike-temp")?.textContent||"—",l=val("bh-mash-time")||0;t.push({n:a++,name:"Heat strike water",duration:0,detail:`Heat strike water to ${o} for ${n}. Manual hold step.`}),l>0&&t.push({n:a++,name:"Mash in / dough in",duration:60*l,detail:"Mash in, eliminate dough balls, verify target mash temp, and stabilize the bed."});const i=sel("mashProfile"),s=MASH_PROFILES.find(e=>e.name===i);s&&s.steps?.length&&s.steps.forEach((e,n)=>{let o=e.temp||"";0===n&&val("mashTemp")>0&&(o=`${val("mashTemp")}°F`);const l=parseTimeToMinutes(e.time);t.push({n:a++,name:e.name,duration:60*l,detail:`Hold at ${o||"target temp"} for ${e.time}. ${e.desc||""}`.trim()})});const r=val("wf-sparge-min")||0;t.push({n:a++,name:"Recirculate / vorlauf",duration:0,detail:"Manual check step: clear wort and confirm run-off before sparging."}),r>0&&t.push({n:a++,name:"Sparge",duration:60*r,detail:"Sparge to hit pre-boil volume and gravity targets."}),t.push({n:a++,name:"Bring wort to boil",duration:0,detail:"Manual hold step: watch for hot break and confirm steady boil before starting boil timer."});const c=val("bh-boil-time")||60,d=[...collectHopEvents().filter(e=>"post"!==e.type).map(e=>({remain:e.remain,label:e.label,desc:e.desc,type:e.type})),{remain:0,label:"Boil complete",desc:"Turn off heat and move to flameout / whirlpool steps.",type:"complete"}];d.sort((e,t)=>(t.remain||0)-(e.remain||0));let m=c;d.some(e=>e.remain===c)||t.push({n:a++,name:"Start boil",duration:0,detail:`Start ${c}-minute boil timer.`}),d.forEach(e=>{const n=m-(e.remain||0);if(n>0&&t.push({n:a++,name:`Boil countdown — ${m} to ${e.remain} min`,duration:60*n,detail:`Boil until ${e.remain} min remain.`}),"boil"===e.type&&t.push({n:a++,name:e.label,duration:0,detail:e.desc}),"flameout"===e.type&&t.push({n:a++,name:e.label,duration:0,detail:e.desc}),"whirlpool"===e.type){const n=val("wf-whirlpool-min")||0;t.push({n:a++,name:e.label,duration:0,detail:e.desc}),n>0&&t.push({n:a++,name:"Whirlpool hold",duration:60*n,detail:`Maintain whirlpool for ${n} min before chilling.`})}m=e.remain||0});const g=val("wf-chill-temp")||68;t.push({n:a++,name:"Chill wort",duration:0,detail:`Cool wort to ${g}°F and transfer to fermenter. Manual hold step.`});const u=collectHopEvents().filter(e=>"post"===e.type);if(u.length&&t.push({n:a++,name:"Dry hop reminder",duration:0,detail:u.map(e=>e.desc).join(" ")}),workflowSteps=t,workflowState.lastBuiltAt=(new Date).toISOString(),workflowState.index>=workflowSteps.length)workflowState.index=0,workflowState.remaining=workflowSteps[0]?.duration||0,workflowState.stepDuration=workflowSteps[0]?.duration||0;else{const e=workflowSteps[workflowState.index];e&&(workflowState.stepDuration=e.duration||0,workflowState.running||(workflowState.remaining=e.duration||0))}renderWorkflowSteps(),updateWorkflowUI()}function renderWorkflowSteps(){const e=document.getElementById("workflow-body");e&&(workflowSteps.length?e.innerHTML=workflowSteps.map((e,t)=>{const a=t<workflowState.index?"wf-row done":t===workflowState.index?"wf-row active":"wf-row",n=e.duration>0?formatClock(e.duration):"Manual";const actualInfo=workflowState.stepActualLog&&workflowState.stepActualLog[t];const actualLine=actualInfo?`<div class="wf-desc" style="color:var(--teal);font-size:10.5px;margin-top:2px">⏱ Actual: ${actualInfo.elapsedMin}m ${actualInfo.elapsedSec}s (planned ${actualInfo.plannedMin}m) · ${actualInfo.start}–${actualInfo.end}</div>`:"";return`<div class="${a}">\n      <div class="wf-num">${e.n}</div>\n      <div>\n        <div class="wf-name">${e.name}</div>\n        <div class="wf-desc">${e.detail}</div>\n        ${actualLine}\n      </div>\n      <div class="wf-time">${n}</div>\n    </div>`}).join(""):e.innerHTML='<div class="wf-muted">No workflow built yet.</div>')}function logWorkflow(e,t){const a=document.getElementById("wf-log");if(!a)return;const n=(new Date).toLocaleTimeString([],{hour:"numeric",minute:"2-digit",second:"2-digit"}),o=document.createElement("div");o.className="wf-log-item",o.innerHTML=`<div><strong>${t||"Workflow"}</strong></div><div>${e}</div><div class="wf-muted">${n}</div>`,a.prepend(o)}function getWorkflowAudioContext(){try{return workflowState.audioCtx||(workflowState.audioCtx=new(window.AudioContext||window.webkitAudioContext)),"suspended"===workflowState.audioCtx.state&&workflowState.audioCtx.resume(),workflowState.audioCtx}catch(e){return null}}function beepWorkflow(e){try{const t=getWorkflowAudioContext();if(!t)return;(Array.isArray(e)&&e.length?e:[0,.22,.46]).forEach((e,a)=>{const n=t.createOscillator(),o=t.createGain();n.type="square",n.frequency.value=1===a?740:880,o.gain.value=1e-4,n.connect(o),o.connect(t.destination);const l=t.currentTime+e;n.start(l),o.gain.setValueAtTime(1e-4,l),o.gain.exponentialRampToValueAtTime(.06,l+.01),o.gain.exponentialRampToValueAtTime(1e-4,l+.18),n.stop(l+.2)})}catch(e){}}function stopWorkflowAlarm(){workflowState.alarmActive=!1,workflowState.alarmTimer&&clearInterval(workflowState.alarmTimer),workflowState.alarmTimer=null}function startWorkflowAlarm(){stopWorkflowAlarm(),workflowState.alarmActive=!0,beepWorkflow(),workflowState.alarmTimer=setInterval(()=>beepWorkflow(),1800)}function syncWorkflowToRunnableStep(e){if(!workflowSteps.length)return null;let t=workflowSteps[workflowState.index]||workflowSteps[0];for(;t&&t.duration<=0&&workflowState.index<workflowSteps.length-1;)logWorkflow(`${e||"Auto-advanced past"} ${t.name}.`,"Workflow"),workflowState.index+=1,t=workflowSteps[workflowState.index],workflowState.remaining=t?.duration||0,workflowState.stepDuration=t?.duration||0;return t}function startWorkflow(){if(stopWorkflowAlarm(),workflowSteps.length||buildWorkflow(),!workflowSteps.length)return;let e=workflowSteps[workflowState.index]||workflowSteps[0];e&&(e.duration<=0&&(e=syncWorkflowToRunnableStep("Auto-advanced past")),e?(workflowState.remaining=workflowState.remaining>0?workflowState.remaining:e.duration||0,workflowState.stepDuration=e.duration||0,workflowState.remaining<=0&&e.duration>0&&(workflowState.remaining=e.duration),workflowState.running=!0,workflowState.timer&&clearInterval(workflowState.timer),workflowState.stepStartWallTime=new Date(),workflowState.timer=setInterval(tickWorkflow,1e3),logWorkflow(`Timer started for ${e.name} at ${workflowState.stepStartWallTime.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}.`,"Started"),updateWorkflowUI()):updateWorkflowUI())}function pauseWorkflow(){stopWorkflowAlarm();workflowState.running=!1,workflowState.timer&&clearInterval(workflowState.timer),workflowState.timer=null,updateWorkflowUI()}function resetWorkflowTimer(){stopWorkflowAlarm(),pauseWorkflow(),workflowState.index=0,workflowState.remaining=workflowSteps[0]?.duration||0,workflowState.stepDuration=workflowSteps[0]?.duration||0,workflowState.stepStartWallTime=null,workflowState.stepActualLog={},window._hopChecked={},document.getElementById("wf-log").innerHTML="";const f=document.getElementById("wf-float");f&&f.classList.remove("alarm-flash"),updateWorkflowUI(),renderWorkflowSteps()}function nextWorkflowStep(e){stopWorkflowAlarm();const f=document.getElementById("wf-float");f&&f.classList.remove("alarm-flash");const t=workflowSteps[workflowState.index];if(t&&(e?logWorkflow(`${t.name} complete.`,"Completed"):logWorkflow(`Manually advanced past ${t.name}.`,"Skipped Ahead")),workflowState.index<workflowSteps.length-1){workflowState.index+=1;const e=workflowSteps[workflowState.index];workflowState.remaining=e.duration||0,workflowState.stepDuration=e.duration||0,beepWorkflow([0]),(function(){
