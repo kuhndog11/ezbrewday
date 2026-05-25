@@ -1401,12 +1401,11 @@ button[onclick="connectSupabase(true)"]{display:none!important}
 .wf-sim-track-inner{display:flex;align-items:flex-start;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;min-width:0}
 /* Each step cell — fixed width so arithmetic is easy */
 .wf-sim-step{display:flex;flex-direction:column;align-items:center;width:80px;min-width:80px;flex-shrink:0;position:relative;cursor:pointer}
-.wf-sim-step-row{width:100%;display:flex;align-items:center;justify-content:center;padding:4px 0}
-/* Full-width connector line rendered as a child div, clipped at edges via the step */
-.wf-sim-line-l,.wf-sim-line-r{flex:1;height:2px;background:var(--border2);transition:background .3s;align-self:center}
-.wf-sim-line-l.done,.wf-sim-line-r.done{background:var(--teal)}
-.wf-sim-line-l.edge,.wf-sim-line-r.edge{background:transparent!important}
-.wf-sim-node{width:12px;height:12px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);flex-shrink:0;transition:all .3s;z-index:1;position:relative}
+.wf-sim-step-row{display:flex;align-items:center;width:100%}
+.wf-sim-line{flex:1;height:2px;background:var(--border2);transition:background .3s}
+.wf-sim-line.done{background:var(--teal)}
+.wf-sim-line.hidden{visibility:hidden}
+.wf-sim-node{width:12px;height:12px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);flex-shrink:0;transition:all .3s}
 .wf-sim-node.done{background:var(--teal2);border-color:var(--teal)}
 .wf-sim-node.active{background:var(--teal);border-color:var(--teal);box-shadow:0 0 0 4px rgba(20,184,166,.2);width:14px;height:14px;animation:wf-node-pulse 1.4s ease-in-out infinite}
 @keyframes wf-node-pulse{0%,100%{box-shadow:0 0 0 4px rgba(20,184,166,.2)}50%{box-shadow:0 0 0 7px rgba(20,184,166,.08)}}
@@ -2407,7 +2406,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
       <div class="wf-sim-track" id="wf-sim-track">
         <div class="wf-sim-track-inner" id="wf-sim-track-inner">
           <div class="wf-sim-step">
-            <div class="wf-sim-step-row"><div class="wf-sim-line-l edge"></div><div class="wf-sim-node"></div><div class="wf-sim-line-r edge"></div></div>
+            <div class="wf-sim-step-row"><div class="wf-sim-line hidden"></div><div class="wf-sim-node"></div><div class="wf-sim-line hidden"></div></div>
             <div class="wf-sim-lbl" style="color:var(--text3)">Build workflow</div>
           </div>
         </div>
@@ -3316,7 +3315,7 @@ let workflowSteps=[],workflowState={index:0,remaining:0,running:!1,timer:null,st
     if(!inner) return;
     const total=_wfDisplaySteps.length;
     if(!total){
-      inner.innerHTML='<div class="wf-sim-step"><div class="wf-sim-step-row"><div class="wf-sim-line-l edge"></div><div class="wf-sim-node"></div><div class="wf-sim-line-r edge"></div></div><div class="wf-sim-lbl" style="color:var(--text3)">Build workflow</div></div>';
+      inner.innerHTML='<div class="wf-sim-step"><div class="wf-sim-step-row"><div class="wf-sim-line hidden"></div><div class="wf-sim-node"></div><div class="wf-sim-line hidden"></div></div><div class="wf-sim-lbl" style="color:var(--text3)">Build workflow</div></div>';
       return;
     }
     inner.innerHTML=_wfDisplaySteps.map((ds,di)=>{
@@ -3324,8 +3323,8 @@ let workflowSteps=[],workflowState={index:0,remaining:0,running:!1,timer:null,st
       const isAct=di===activeIdx;
       const nodeC='wf-sim-node'+(isDone?' done':isAct?' active':'');
       const lblC='wf-sim-lbl'+(isDone?' done':isAct?' active':'');
-      const leftLineC='wf-sim-line-l'+(isDone||isAct?' done':'')+(di===0?' edge':'');
-      const rightLineC='wf-sim-line-r'+(isDone?' done':'')+(di===total-1?' edge':'');
+      const leftLineC='wf-sim-line'+(isDone||isAct?' done':'')+(di===0?' hidden':'');
+      const rightLineC='wf-sim-line'+(isDone?' done':'')+(di===total-1?' hidden':'');
       let lbl=_shortLabel(ds.name);
       if(lbl.length>11) lbl=lbl.substring(0,10)+'…';
       return `<div class="wf-sim-step" title="${ds.name}" onclick="wfSimJump(${di})" style="cursor:pointer">
