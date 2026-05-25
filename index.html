@@ -1574,6 +1574,12 @@ button[onclick="connectSupabase(true)"]{display:none!important}
             </div>
           </div>
           <div id="auth-login-form" class="auth-login-form">
+          <!-- Edge tracking prevention warning -->
+          <div id="edge-storage-warning" style="display:none;margin-bottom:12px;padding:10px 14px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.4);border-radius:8px;font-size:12px;color:var(--yellow,#f59e0b);line-height:1.6">
+            ⚠️ <strong>Microsoft Edge issue detected:</strong> Edge's Tracking Prevention is blocking sign-in.<br>
+            Fix: go to <strong>edge://settings/privacy</strong> → set Tracking Prevention to <strong>Basic</strong>,
+            or open in <strong>Chrome / Firefox</strong> instead.
+          </div>
           <label class="fl">Email</label>
           <input type="text" id="cloud-email" placeholder="you@brewery.com" oninput="onLoginEmailInput()">
           <div id="auth-password-section">
@@ -5295,7 +5301,7 @@ async function showCloudLibrary(){
   }
 }
 
-async function showCloudModal(){
+async function showCloudModal(){checkEdgeStorageWarning&&checkEdgeStorageWarning();
   document.getElementById('cloud-overlay')?.classList.add('show');
   refreshCloudModalAccess();
   // Re-establish session if needed (fast - reads localStorage)
@@ -5429,6 +5435,22 @@ async function signUpCloud(){
   updateCloudStatus('Account created. You can now sign in with '+email+'.','ok');
   refreshCloudModalAccess();
 }
+// Show Edge warning in login modal if tracking prevention is active
+function checkEdgeStorageWarning(){
+  const isEdge = navigator.userAgent.includes('Edg/');
+  const isBlocked = window.__sbStorageBlocked || (() => {
+    try {
+      const k = '__edge_test__';
+      localStorage.setItem(k, '1');
+      const v = localStorage.getItem(k);
+      localStorage.removeItem(k);
+      return v !== '1';
+    } catch(e) { return true; }
+  })();
+  const el = document.getElementById('edge-storage-warning');
+  if(el) el.style.display = (isEdge && isBlocked) ? '' : 'none';
+}
+
 async function signInCloud(){if(!await connectSupabase(false)) return showCloudModal(); const email=cloudSel('cloud-email')?.value?.trim(); const password=cloudSel('cloud-password')?.value||''; if(!email||!password){updateCloudStatus('Enter your email and password.','bad'); return} updateCloudStatus('Signing in…',''); const {data,error}=await cloudState.client.auth.signInWithPassword({email,password}); if(error){updateCloudStatus('Incorrect email or password. Please try again.','bad'); return} cloudState.user=data?.user||null; updateCloudStatus('Signed in as '+(cloudState.user?.email||email)+'. Checking your Pro access…','ok'); hydrateLicenseState(); await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity(); setTimeout(()=>closeCloudModal(),700);}
 async function signOutCloud(){if(!cloudState.client) return; const {error}=await cloudState.client.auth.signOut(); if(error){updateCloudStatus(error.message,'bad'); return} cloudState.user=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; cloudState.proLicense=null; licenseState.valid=false; licenseState.key=''; licenseState.seed=''; licenseState.email=''; hydrateLicenseState(); renderLicenseSupportState(); refreshProUI(); refreshCloudModalAccess(); updateCloudStatus('Signed out.','');}
 
