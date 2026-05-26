@@ -34,6 +34,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .hdr-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--teal),var(--teal2));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;box-shadow:0 0 12px rgba(20,184,166,.3)}
 .hdr-title{font-size:14px;font-weight:600;color:var(--text);letter-spacing:-.01em}
 .hdr-sub{font-size:11px;color:var(--text3);display:block;margin-top:1px}
+/* Hide tagline when header is crowded (email chip visible = logged in) */
+.hdr-email-visible #hdr-tagline{display:none!important}
 .hdr-chips{display:flex;gap:6px;align-items:center}
 .chip{font-family:var(--mono);font-size:10.5px;color:var(--text3);background:var(--bg3);padding:3px 8px;border-radius:5px;border:1px solid var(--border);transition:.15s}
 .chip.live{color:var(--teal);border-color:rgba(20,184,166,.25);background:var(--teal3)}
@@ -1732,10 +1734,10 @@ button[onclick="connectSupabase(true)"]{display:none!important}
       <div style="display:flex;align-items:baseline;gap:0">
         <span style="font-family:'Arial Black','Impact','Oswald',sans-serif;font-size:20px;font-weight:900;color:#F5A623;letter-spacing:-0.5px;line-height:1">EZ</span><span style="font-family:'Arial Black','Impact','Oswald',sans-serif;font-size:20px;font-weight:900;color:var(--text);letter-spacing:-0.5px;line-height:1">Brew Day</span>
       </div>
-      <div style="display:flex;align-items:center;gap:5px;margin-top:4px">
-        <div style="height:1.5px;width:16px;background:#4CAF50;border-radius:1px"></div>
-        <span style="font-family:'Arial','Helvetica',sans-serif;font-size:9.5px;font-weight:700;color:#4CAF50;letter-spacing:1.5px;text-transform:uppercase">Brew smarter.</span>
-        <div style="height:1.5px;width:16px;background:#4CAF50;border-radius:1px"></div>
+      <div id="hdr-tagline" style="display:flex;align-items:center;gap:5px;margin-top:3px">
+        <div style="height:1.5px;width:12px;background:#4CAF50;border-radius:1px"></div>
+        <span style="font-family:'Arial','Helvetica',sans-serif;font-size:8.5px;font-weight:700;color:#4CAF50;letter-spacing:1.2px;text-transform:uppercase">Brew smarter.</span>
+        <div style="height:1.5px;width:12px;background:#4CAF50;border-radius:1px"></div>
       </div>
     </div>
     <img id="brand-logo-display" src="" alt="Logo" style="display:none;max-height:40px;max-width:120px;width:auto;height:auto;object-fit:contain">
@@ -5194,7 +5196,7 @@ function populateCloudConfig(){
   if(cloudSel('sb-url')) cloudSel('sb-url').value='Connected automatically';
   if(cloudSel('sb-anon')) cloudSel('sb-anon').value='Configured securely';
 }
-function updateCloudStatus(msg,type){const el=cloudSel('cloud-status'); const chip=cloudSel('cloud-chip'); if(el){el.textContent=msg; el.className='cloud-status'+(type==='bad'?' bad':type==='ok'?' ok':'')} if(chip){let label='CLOUD · OFFLINE'; if(cloudState.connected&&cloudState.user){label='CLOUD · '+(cloudState.user.email||'CONNECTED').toUpperCase()} else if(cloudState.connected){label='CLOUD · CONNECTED'} chip.textContent=label; chip.classList.toggle('cloud-chip-ok',!!cloudState.connected); chip.classList.toggle('cloud-chip-bad',!cloudState.connected)} }
+function updateCloudStatus(msg,type){const el=cloudSel('cloud-status'); const chip=cloudSel('cloud-chip'); if(el){el.textContent=msg; el.className='cloud-status'+(type==='bad'?' bad':type==='ok'?' ok':'')} if(chip){let label='CLOUD · OFFLINE'; if(cloudState.connected&&cloudState.user){label='CLOUD · '+(cloudState.user.email||'CONNECTED').toUpperCase()} else if(cloudState.connected){label='CLOUD · CONNECTED'} chip.textContent=label; chip.classList.toggle('cloud-chip-ok',!!cloudState.connected); chip.classList.toggle('cloud-chip-bad',!cloudState.connected)} const hdr=document.querySelector('.hdr'); if(hdr) hdr.classList.toggle('hdr-email-visible',!!(cloudState.connected&&cloudState.user)); }
 
 function maskCloudConfigFields(){
   const urlInput=cloudSel('sb-url'), anonInput=cloudSel('sb-anon');
