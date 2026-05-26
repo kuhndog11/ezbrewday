@@ -5372,7 +5372,7 @@ const sbStorage = (() => {
     removeItem:(k) => { try { if(window.__sbMem) delete window.__sbMem[k]; }            catch(e){} }
   };
 })();
-cloudState.client=window.supabase.createClient(cfg.url,cfg.anon, {auth:{storage:sbStorage||localStorage,storageKey:'sb-'+cfg.url+'-auth-token',autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}}); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; const _baseMsg = window.__sbStorageBlocked ? "Connected (session storage limited by browser — sign-in works but won't persist across page reloads). Try Chrome or Firefox for full experience." : "Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email."; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):_baseMsg, cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && (window.__recoveryHash||'').includes('type=recovery') && session?.user){ window.__recoveryHash=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
+cloudState.client=window.supabase.createClient(cfg.url,cfg.anon, {auth:{storage:sbStorage||localStorage,storageKey:'sb-'+cfg.url+'-auth-token',autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}}); cloudState.connected=true; const {data,error}=await cloudState.client.auth.getUser(); if(error&&showMsg) updateCloudStatus(error.message,'bad'); cloudState.user=data?.user||null; const _baseMsg = window.__sbStorageBlocked ? "Connected (session storage limited by browser — sign-in works but won't persist across page reloads). Try Chrome or Firefox for full experience." : "Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email."; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):_baseMsg, cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='PASSWORD_RECOVERY' || ((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && (window.__recoveryHash||'').includes('type=recovery'))) && session?.user){ window.__recoveryHash=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); return; } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
  return true;
 }catch(e){updateCloudStatus('Connection failed: '+e.message,'bad'); cloudState.connected=false; return false}}
 /** Show/hide the setup-email button as the user types their email */
@@ -5398,19 +5398,17 @@ async function sendPasswordSetupEmail(){
     updateCloudStatus('Enter your purchase email address first.','bad');
     return;
   }
-  updateCloudStatus('Sending setup email…','');
-  const {error} = await cloudState.client.auth.signInWithOtp({
-    email,
-    options:{
-      shouldCreateUser: false,           // Only works for existing accounts
-      emailRedirectTo: window.location.href
-    }
+  updateCloudStatus('Sending password reset email…','');
+  // Use resetPasswordForEmail so the link contains type=recovery,
+  // which triggers the password setup panel when clicked.
+  const {error} = await cloudState.client.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href.split('?')[0].split('#')[0]
   });
   if(error){
-    // "Email not confirmed" or "User not found" means account doesn't exist yet
     if(error.message.toLowerCase().includes('not found') ||
        error.message.toLowerCase().includes('invalid') ||
-       error.message.toLowerCase().includes('no user')){
+       error.message.toLowerCase().includes('no user') ||
+       error.message.toLowerCase().includes('unable to validate')){
       updateCloudStatus(
         '⚠️ No account found for ' + email +
         '. Make sure you use the exact email from your Stripe receipt. ' +
@@ -5423,11 +5421,11 @@ async function sendPasswordSetupEmail(){
     return;
   }
   updateCloudStatus(
-    '✅ Setup email sent to ' + email +
-    '! Check your inbox (and spam folder). Clicking the link will sign you in automatically.',
+    '✅ Password reset email sent to ' + email +
+    '! Check your inbox (and spam folder). Click the link to set your password.',
     'ok'
   );
-  // Hide the password field — they don't need it right now
+  // Hide the password field — they’ll set it via the email link
   const pwSection = document.getElementById('auth-password-section');
   if(pwSection) pwSection.style.opacity = '0.4';
 }
