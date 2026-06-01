@@ -5164,13 +5164,22 @@ const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProf
     try {
       await connectSupabase(false);
       if(cloudState.client){
-        const { data: sessionData, error: sessionError } = await cloudState.client.auth.getSession();
+        const { data: sessionData, error: sessionError } = await Promise.race([
+          cloudState.client.auth.getSession(),
+          new Promise((_,reject) => setTimeout(() => reject(new Error('DEADLOCK')), 5000))
+        ]).catch(e => ({ data: null, error: e }));
         if(sessionError || !sessionData?.session){
-          console.warn('[CloudState] Session refresh failed:', sessionError?.message || 'no session');
-          cloudState.user = null;
-          updateCloudStatus('Cloud session expired — please sign in again.', 'bad');
-          refreshCloudModalAccess();
-          refreshProUI();
+          if(sessionError?.message === 'DEADLOCK') {
+            console.warn('[CloudState] Client deadlocked on reconnect — will recreate on next call');
+            cloudState.client = null;
+            cloudState.authListenerBound = false;
+          } else {
+            console.warn('[CloudState] Session refresh failed:', sessionError?.message || 'no session');
+            cloudState.user = null;
+            updateCloudStatus('Cloud session expired — please sign in again.', 'bad');
+            refreshCloudModalAccess();
+            refreshProUI();
+          }
         } else {
           cloudState.user = sessionData.session.user;
           updateCloudStatus('Connected as ' + cloudState.user.email, 'ok');
@@ -5365,20 +5374,51 @@ function openCloudOverlay(){
 }
 function saveCloudConfig(){updateCloudStatus('Connection is configured automatically.','ok'); connectSupabase(true)}
 async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} if(cloudState.client){
-  // FIX: Use getSession() first — reads localStorage with NO network call,
-  // surviving tab switches, background throttling, and file:// restrictions.
-  // Only fall back to getUser() (network) if local session is missing.
-  let _su=null;
-  try{ const {data:_sd}=await cloudState.client.auth.getSession(); _su=_sd?.session?.user||null; console.log('[connectSupabase] getSession result: user='+!!_su); }catch(e){console.warn('[connectSupabase] getSession threw:',e.message);_su=null;}
-  if(!_su){ 
-    console.log('[connectSupabase] getSession gave no user, trying getUser...');
-    try{ const {data:_ud}=await cloudState.client.auth.getUser(); _su=_ud?.user||null; console.log('[connectSupabase] getUser result: user='+!!_su); }catch(e){console.warn('[connectSupabase] getUser threw:',e.message);_su=null;} 
+  // Deadlock detection: if getSession hangs for >5s, the Supabase client auth
+  // mutex is locked (known bug with autoRefreshToken after tab sleep).
+  // Fix: race getSession against a timeout; on timeout, nuke and recreate the client.
+  let _su = null;
+  try {
+    const _sessionResult = await Promise.race([
+      cloudState.client.auth.getSession(),
+      new Promise((_,reject) => setTimeout(() => reject(new Error('DEADLOCK')), 5000))
+    ]);
+    _su = _sessionResult?.data?.session?.user || null;
+    console.log('[connectSupabase] getSession result: user='+!!_su);
+  } catch(e) {
+    if(e.message === 'DEADLOCK') {
+      console.warn('[connectSupabase] Supabase client deadlocked — recreating client');
+      // Preserve the stored auth token and recreate the client fresh
+      const _storageKey = 'sb-'+cfg.url+'-auth-token';
+      const _storedToken = (() => {
+        try { return localStorage.getItem(_storageKey); } catch(e) { return null; }
+      })();
+      cloudState.client = null;
+      cloudState.authListenerBound = false;
+      // Small delay to let the old client's async operations settle
+      await new Promise(r => setTimeout(r, 100));
+      // Fall through to client creation below (cloudState.client is now null)
+    } else {
+      console.warn('[connectSupabase] getSession threw:', e.message);
+      _su = null;
+    }
   }
-  cloudState.user=_su;
-  console.log('[connectSupabase] final: cloudState.user='+!!cloudState.user+' email='+(cloudState.user?.email||'none'));
-  if(cloudState.user&&showMsg) updateCloudStatus('Connected as '+cloudState.user.email,'ok');
-  if(cloudState.user){ refreshCloudModalAccess(); refreshProUI(); }
-  return true;
+  if(cloudState.client) {
+    // Client is responsive — use the result we got
+    if(!_su){
+      console.log('[connectSupabase] getSession gave no user, trying getUser...');
+      try{ const {data:_ud}=await Promise.race([
+        cloudState.client.auth.getUser(),
+        new Promise((_,reject) => setTimeout(() => reject(new Error('DEADLOCK')), 5000))
+      ]); _su=_ud?.user||null; console.log('[connectSupabase] getUser result: user='+!!_su); }catch(e){ console.warn('[connectSupabase] getUser threw:',e.message); _su=null; }
+    }
+    cloudState.user=_su;
+    console.log('[connectSupabase] final: cloudState.user='+!!cloudState.user+' email='+(cloudState.user?.email||'none'));
+    if(cloudState.user&&showMsg) updateCloudStatus('Connected as '+cloudState.user.email,'ok');
+    if(cloudState.user){ refreshCloudModalAccess(); refreshProUI(); }
+    return true;
+  }
+  // Client was deadlocked and nulled — fall through to recreate it below
 } // Universal storage: tries localStorage first, falls back to sessionStorage,
 // then in-memory. This fixes Edge Tracking Prevention which blocks localStorage
 // for cross-origin auth (supabase.co) but allows sessionStorage.
@@ -13083,13 +13123,45 @@ if(_origRefreshProUI){
       }
       if(!cloudState.client){ const ok=await connectSupabase(false); if(!ok) return; }
       if(list) list.innerHTML='<div class="community-empty">Loading…</div>';
-      const {data,error}=await cloudState.client
-        .from(COMMUNITY_TABLE)
-        .select('id,user_id,brewer_name,beer_name,beer_style,og,fg,abv,ibu,srm,description,payload,published_at,import_count')
-        .order('published_at',{ascending:false})
-        .limit(100);
+
+      // Wrap the Supabase query in a 6-second timeout to detect client deadlock.
+      // If it hangs, fall back to a direct REST fetch (which always works).
+      let data = null, error = null;
+      try {
+        const result = await Promise.race([
+          cloudState.client
+            .from(COMMUNITY_TABLE)
+            .select('id,user_id,brewer_name,beer_name,beer_style,og,fg,abv,ibu,srm,description,payload,published_at,import_count')
+            .order('published_at',{ascending:false})
+            .limit(100),
+          new Promise((_,reject) => setTimeout(() => reject(new Error('CLIENT_DEADLOCK')), 6000))
+        ]);
+        data = result.data;
+        error = result.error;
+      } catch(e) {
+        if(e.message === 'CLIENT_DEADLOCK'){
+          console.warn('[Community] Supabase client deadlocked on query — using direct REST fetch');
+          // Recreate the client to fix it for future calls
+          connectSupabase(false).catch(()=>{});
+          // Use direct REST fetch which bypasses the frozen client
+          try {
+            const cfg = getCloudConfig();
+            const tokenKey = Object.keys(localStorage).find(k => k.includes('auth-token'));
+            const token = tokenKey ? JSON.parse(localStorage.getItem(tokenKey)||'{}')?.access_token : null;
+            const resp = await fetch(cfg.url+'/rest/v1/'+COMMUNITY_TABLE+'?select=id,user_id,brewer_name,beer_name,beer_style,og,fg,abv,ibu,srm,description,payload,published_at,import_count&order=published_at.desc&limit=100', {
+              headers: { 'apikey': cfg.anon, 'Authorization': 'Bearer '+(token||cfg.anon) }
+            });
+            data = await resp.json();
+          } catch(fetchErr) {
+            error = { message: 'Could not load recipes: ' + fetchErr.message };
+          }
+        } else {
+          error = { message: e.message };
+        }
+      }
+
       if(error){
-        if(list) list.innerHTML='<div class="community-empty">Could not load recipes. Check your Supabase setup.</div>';
+        if(list) list.innerHTML='<div class="community-empty">Could not load recipes. Check your connection.</div>';
         communitySetStatus(error.message,'bad');
         return;
       }
