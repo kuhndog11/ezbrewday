@@ -1758,7 +1758,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
       <button class="btn btn-ghost btn-sm" onclick="var dd=document.getElementById('hdr-more-dropdown');dd&&dd.classList.toggle('open');event.stopPropagation();" id="hdr-more-btn" aria-label="More options">⋯ More</button>
       <div class="hdr-more-dropdown" id="hdr-more-dropdown">
         <button onclick="showCloudLibrary();document.getElementById('hdr-more-dropdown')?.classList.remove('open')">☁️ Cloud Library</button>
-        <button id="community-header-btn" onclick="showCommunityLibrary();document.getElementById('hdr-more-dropdown')?.classList.remove('open')">🌍 Community</button>
+        <button id="community-header-btn" onclick="window.showCommunityLibrary();document.getElementById('hdr-more-dropdown')?.classList.remove('open')">🌍 Community</button>
         <button onclick="document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));document.getElementById('on-tap')?.classList.add('active');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));renderTapBoard_init();document.getElementById('hdr-more-dropdown')?.classList.remove('open')">🍺 On Tap</button>
         <button onclick="openFeedbackModal();document.getElementById('hdr-more-dropdown')?.classList.remove('open')" id="feedback-toolbar-btn">💬 Feedback</button>
         <button onclick="startBeerCheckout();document.getElementById('hdr-more-dropdown')?.classList.remove('open')">🍺 Buy Me a Beer</button>
@@ -1768,7 +1768,7 @@ button[onclick="connectSupabase(true)"]{display:none!important}
     <!-- Desktop: show all buttons, hide more menu -->
     <div class="hdr-btns-desktop">
       <button class="btn btn-ghost btn-sm" onclick="showCloudLibrary()">☁️ Cloud Library</button>
-      <button id="community-header-btn-desktop"  class="btn btn-ghost btn-sm" onclick="showCommunityLibrary()">🌍 Community</button>
+      <button id="community-header-btn-desktop"  class="btn btn-ghost btn-sm" onclick="window.showCommunityLibrary()">🌍 Community</button>
       <button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));document.getElementById('on-tap')?.classList.add('active');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));renderTapBoard_init()">🍺 On Tap</button>
       <button class="btn btn-ghost btn-sm" onclick="openFeedbackModal()">💬 Feedback</button>
       <button class="btn btn-ghost btn-sm" onclick="startBeerCheckout()">🍺 Buy Me a Beer</button>
@@ -6138,7 +6138,7 @@ function forceUnlockCommunity(){
     headerBtn.style.opacity=pro?'1':'';
     headerBtn.style.pointerEvents='auto';
     headerBtn.title=pro?'Browse and publish community recipes':'Upgrade to Pro to use Community Library';
-    headerBtn.setAttribute('onclick', pro ? (headerBtn.dataset.originalOnclick||'showCommunityLibrary()') : "promptUpgrade('community')");
+    headerBtn.setAttribute('onclick', pro ? (headerBtn.dataset.originalOnclick||"window.showCommunityLibrary()") : "promptUpgrade('community')");
   }
 
   if(tabBtn){
@@ -6147,7 +6147,7 @@ function forceUnlockCommunity(){
     tabBtn.title=pro?'Browse and publish community recipes':'Upgrade to Pro to use Community Library';
     const tag=tabBtn.querySelector('.pro-lock-tag');
     if(tag) tag.style.display=pro?'none':'';
-    tabBtn.setAttribute('onclick', pro ? "showCommunityLibrary()" : "promptUpgrade('community')");
+    tabBtn.setAttribute('onclick', pro ? "window.showCommunityLibrary()" : "promptUpgrade('community')");
   }
 }
 
@@ -12921,17 +12921,13 @@ if(_origRefreshProUI){
 
     /* ── Open / Close ── */
     async function showCommunityLibrary(){
-      // Step 1: Resolve Pro status if not yet loaded
       if(cloudState.user && cloudState.proLicense === null){
         try{ await refreshServerProStatus(false); }catch(_){}
       }
-      // Step 2: Gate check
       if(!isProUser()){
         if(typeof showLicenseModal==='function') showLicenseModal('Community Library requires an active Pro account.');
         return;
       }
-      // Step 3: Close and fully reset the cloud overlay before opening community
-      // Directly manipulate DOM — do NOT rely on closeCloudModal() being patched
       const cloudOverlay = document.getElementById('cloud-overlay');
       if(cloudOverlay){
         cloudOverlay.classList.remove('show');
@@ -12939,16 +12935,13 @@ if(_origRefreshProUI){
         const focused = cloudOverlay.querySelector(':focus');
         if(focused) focused.blur();
       }
-      // Step 4: Show community overlay directly — no async calls between here and show
       const communityOverlay = document.getElementById('community-overlay');
       if(!communityOverlay){ console.warn('[Community] overlay element not found'); return; }
       communityOverlay.classList.add('show');
       communityOverlay.setAttribute('aria-hidden','false');
-      // Step 5: Background tasks after overlay is visible
       try{ communityShowTab('browse'); }catch(_){}
       try{ communityCaptureCurrentRecipe(false); }catch(_){}
       try{ communityRefreshList(); }catch(_){}
-      // Background cloud refresh — don't let it block showing the overlay
       if(cloudState?.user && cloudState?.client){
         refreshServerProStatus(false)
           .then(()=>{ refreshCloudModalAccess(); refreshProUI(); })
@@ -13135,7 +13128,6 @@ if(_origRefreshProUI){
       try{ showTab('brew-notes',document.querySelector('.tab[onclick*="brew-notes"]')); }catch(e){}
     }
 
-    // Expose all community functions to window so onclick handlers can reach them
     window.showCommunityLibrary        = showCommunityLibrary;
     window.closeCommunityLibrary       = closeCommunityLibrary;
     window.communityShowTab            = communityShowTab;
