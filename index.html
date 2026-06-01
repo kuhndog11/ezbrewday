@@ -12921,29 +12921,45 @@ if(_origRefreshProUI){
 
     /* ── Open / Close ── */
     async function showCommunityLibrary(){
+      // Step 1: Resolve Pro status if not yet loaded
       if(cloudState.user && cloudState.proLicense === null){
         try{ await refreshServerProStatus(false); }catch(_){}
       }
+      // Step 2: Gate check
       if(!isProUser()){
-        showLicenseModal('Community Library requires an active Pro account.');
+        if(typeof showLicenseModal==='function') showLicenseModal('Community Library requires an active Pro account.');
         return;
       }
-      try{
-        await ensureCloudReady();
-        if(cloudState?.user&&cloudState?.client){
-          await refreshServerProStatus(false);
-          refreshCloudModalAccess();
-          refreshProUI();
-        }
-      }catch(_){}
-      closeCloudModal();
-      communityShowTab('browse');
-      document.getElementById('community-overlay')?.classList.add('show');
-      communityCaptureCurrentRecipe(false);
-      communityRefreshList();
+      // Step 3: Close and fully reset the cloud overlay before opening community
+      // Directly manipulate DOM — do NOT rely on closeCloudModal() being patched
+      const cloudOverlay = document.getElementById('cloud-overlay');
+      if(cloudOverlay){
+        cloudOverlay.classList.remove('show');
+        cloudOverlay.setAttribute('aria-hidden','true');
+        const focused = cloudOverlay.querySelector(':focus');
+        if(focused) focused.blur();
+      }
+      // Step 4: Show community overlay directly — no async calls between here and show
+      const communityOverlay = document.getElementById('community-overlay');
+      if(!communityOverlay){ console.warn('[Community] overlay element not found'); return; }
+      communityOverlay.classList.add('show');
+      communityOverlay.setAttribute('aria-hidden','false');
+      // Step 5: Background tasks after overlay is visible
+      try{ communityShowTab('browse'); }catch(_){}
+      try{ communityCaptureCurrentRecipe(false); }catch(_){}
+      try{ communityRefreshList(); }catch(_){}
+      // Background cloud refresh — don't let it block showing the overlay
+      if(cloudState?.user && cloudState?.client){
+        refreshServerProStatus(false)
+          .then(()=>{ refreshCloudModalAccess(); refreshProUI(); })
+          .catch(()=>{});
+      }
     }
     function closeCommunityLibrary(){
-      document.getElementById('community-overlay')?.classList.remove('show');
+      const overlay = document.getElementById('community-overlay');
+      if(!overlay) return;
+      overlay.classList.remove('show');
+      overlay.setAttribute('aria-hidden','true');
     }
 
     /* ── Payload helpers ── */
@@ -13119,16 +13135,14 @@ if(_origRefreshProUI){
       try{ showTab('brew-notes',document.querySelector('.tab[onclick*="brew-notes"]')); }catch(e){}
     }
 
-    // ── Expose all community functions to window so onclick handlers can reach them ──
-    // These are defined in a <script> inside the overlay div. Some browsers scope
-    // them locally rather than on window, making onclick="showCommunityLibrary()" fail.
-    window.showCommunityLibrary    = showCommunityLibrary;
-    window.closeCommunityLibrary   = closeCommunityLibrary;
-    window.communityShowTab        = communityShowTab;
-    window.communityRefreshList    = communityRefreshList;
+    // Expose all community functions to window so onclick handlers can reach them
+    window.showCommunityLibrary        = showCommunityLibrary;
+    window.closeCommunityLibrary       = closeCommunityLibrary;
+    window.communityShowTab            = communityShowTab;
+    window.communityRefreshList        = communityRefreshList;
     window.communityCaptureCurrentRecipe = communityCaptureCurrentRecipe;
-    window.communityApplyFilters   = communityApplyFilters;
-    window.communitySetStatus      = communitySetStatus;
+    window.communityApplyFilters       = communityApplyFilters;
+    window.communitySetStatus          = communitySetStatus;
   </script>
 
 
