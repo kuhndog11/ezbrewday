@@ -13121,53 +13121,28 @@ if(_origRefreshProUI){
         if(list) list.innerHTML='<div class="community-empty">Sign in with your EzBrewDay account to use the Community Library.</div>';
         return;
       }
-      if(!cloudState.client){ const ok=await connectSupabase(false); if(!ok) return; }
       if(list) list.innerHTML='<div class="community-empty">Loading…</div>';
-
-      // Wrap the Supabase query in a 6-second timeout to detect client deadlock.
-      // If it hangs, fall back to a direct REST fetch (which always works).
-      let data = null, error = null;
+      // Always use direct REST fetch — proven reliable even when Supabase JS client
+      // is deadlocked after tab sleep. Community recipes are public (anon key works).
       try {
-        const result = await Promise.race([
-          cloudState.client
-            .from(COMMUNITY_TABLE)
-            .select('id,user_id,brewer_name,beer_name,beer_style,og,fg,abv,ibu,srm,description,payload,published_at,import_count')
-            .order('published_at',{ascending:false})
-            .limit(100),
-          new Promise((_,reject) => setTimeout(() => reject(new Error('CLIENT_DEADLOCK')), 6000))
-        ]);
-        data = result.data;
-        error = result.error;
+        const cfg = getCloudConfig();
+        const tokenKey = Object.keys(localStorage).find(k => k.includes('auth-token'));
+        const stored = tokenKey ? JSON.parse(localStorage.getItem(tokenKey)||'{}') : {};
+        const token = stored?.access_token || stored?.token || cfg.anon;
+        const fields = 'id,user_id,brewer_name,beer_name,beer_style,og,fg,abv,ibu,srm,description,payload,published_at,import_count';
+        const resp = await fetch(cfg.url+'/rest/v1/'+COMMUNITY_TABLE+'?select='+fields+'&order=published_at.desc&limit=100', {
+          headers: { 'apikey': cfg.anon, 'Authorization': 'Bearer '+token }
+        });
+        if(!resp.ok){ throw new Error('HTTP '+resp.status); }
+        const data = await resp.json();
+        communityState.recipes=Array.isArray(data)?data:[];
+        communityPopulateStyleFilter();
+        communityApplyFilters();
       } catch(e) {
-        if(e.message === 'CLIENT_DEADLOCK'){
-          console.warn('[Community] Supabase client deadlocked on query — using direct REST fetch');
-          // Recreate the client to fix it for future calls
-          connectSupabase(false).catch(()=>{});
-          // Use direct REST fetch which bypasses the frozen client
-          try {
-            const cfg = getCloudConfig();
-            const tokenKey = Object.keys(localStorage).find(k => k.includes('auth-token'));
-            const token = tokenKey ? JSON.parse(localStorage.getItem(tokenKey)||'{}')?.access_token : null;
-            const resp = await fetch(cfg.url+'/rest/v1/'+COMMUNITY_TABLE+'?select=id,user_id,brewer_name,beer_name,beer_style,og,fg,abv,ibu,srm,description,payload,published_at,import_count&order=published_at.desc&limit=100', {
-              headers: { 'apikey': cfg.anon, 'Authorization': 'Bearer '+(token||cfg.anon) }
-            });
-            data = await resp.json();
-          } catch(fetchErr) {
-            error = { message: 'Could not load recipes: ' + fetchErr.message };
-          }
-        } else {
-          error = { message: e.message };
-        }
-      }
-
-      if(error){
+        console.warn('[Community] Recipe load failed:', e.message);
         if(list) list.innerHTML='<div class="community-empty">Could not load recipes. Check your connection.</div>';
-        communitySetStatus(error.message,'bad');
-        return;
+        if(typeof communitySetStatus==='function') communitySetStatus(e.message,'bad');
       }
-      communityState.recipes=Array.isArray(data)?data:[];
-      communityPopulateStyleFilter();
-      communityApplyFilters();
     }
 
     async function communityIncrementImportCount(recipeId){
