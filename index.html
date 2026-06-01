@@ -3643,7 +3643,15 @@ if(e.duration<=0&&e.manual){
   }
   updateWorkflowUI();return;
 }
-if(e.duration<=0)return pauseWorkflow(),void updateWorkflowUI();workflowState.remaining=Math.max(0,(workflowState.remaining||e.duration)-1),updateWorkflowUI(),workflowState.remaining<=0&&(pauseWorkflow(),workflowState.remaining=0,(function(){
+if(e.duration<=0)return pauseWorkflow(),void updateWorkflowUI();
+// Wall-clock based: calculate remaining from actual start time so sleep/suspend doesn't freeze the timer
+if(workflowState.stepStartWallTime){
+  const elapsedSec=(Date.now()-workflowState.stepStartWallTime.getTime())/1000;
+  workflowState.remaining=Math.max(0,(workflowState.stepDuration||e.duration)-elapsedSec);
+}else{
+  workflowState.remaining=Math.max(0,(workflowState.remaining||e.duration)-1);
+}
+updateWorkflowUI(),workflowState.remaining<=0&&(pauseWorkflow(),workflowState.remaining=0,(function(){
   const stepName=e.name;
   let actualMsg='';
   if(workflowState.stepStartWallTime){
@@ -5144,32 +5152,51 @@ function hydrateBrandSettings(){
 const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProfiles:[],proLicense:null};
 
 // ── Re-connect when user returns to this tab ─────────────────────────
-// cloudState is in-memory only. After switching tabs the Supabase SDK's
-// token-refresh timer may be throttled by the browser. This listener
-// calls connectSupabase() (now using getSession() = localStorage read,
-// no network needed) whenever the tab becomes visible or regains focus,
-// restoring cloudState.user so all buttons work again.
+// cloudState is in-memory only. After sleep or tab-switch, the Supabase
+// SDK's token-refresh timer may have been throttled or killed by the
+// browser, leaving the JWT expired. This listener uses getSession()
+// (which triggers a real token refresh via the refresh token if needed)
+// rather than getUser() (which just checks the cached — possibly dead —
+// JWT). If the refresh fails, the cloud chip is set to OFFLINE so the
+// user knows to re-sign-in rather than seeing a stale "connected" state.
 (function(){
   let _busy = false;
+
   async function _tabReconnect(){
     if(_busy) return;
     _busy = true;
     try {
-      // Step 1: Restore session from localStorage (fast, no network)
+      // Step 1: Ensure Supabase client exists
       await connectSupabase(false);
-      if(cloudState.user){
-        updateCloudStatus('Connected as ' + cloudState.user.email, 'ok');
-        refreshCloudModalAccess();
-        refreshProUI();
-        forceUnlockCommunity();
+
+      if(cloudState.client){
+        // Step 2: Use getSession() — this triggers a real JWT refresh if
+        // the current token is expired, using the stored refresh token.
+        // getUser() alone does NOT refresh — it just validates the cached token.
+        const { data: sessionData, error: sessionError } = await cloudState.client.auth.getSession();
+
+        if(sessionError || !sessionData?.session){
+          // Session truly gone (refresh token expired or revoked) — show offline
+          console.warn('[CloudState] Session refresh failed:', sessionError?.message || 'no session');
+          cloudState.user = null;
+          updateCloudStatus('Cloud session expired — please sign in again.', 'bad');
+          refreshCloudModalAccess();
+          refreshProUI();
+        } else {
+          // Fresh valid session — update user and UI
+          cloudState.user = sessionData.session.user;
+          updateCloudStatus('Connected as ' + cloudState.user.email, 'ok');
+          refreshCloudModalAccess();
+          refreshProUI();
+          forceUnlockCommunity();
+        }
       }
     } catch(e){ console.warn('[CloudState] Tab reconnect error:', e.message); }
     finally {
-      // Release the busy lock immediately after session restore
-      // so Save clicks are never blocked by the background pro-status fetch
+      // Release busy lock immediately so Save clicks are never blocked
       _busy = false;
     }
-    // Step 2: Refresh pro license in background (slow DB query, cached after first call)
+    // Step 3: Refresh pro license in background (slow DB query)
     // Runs AFTER _busy is released so it never blocks button clicks
     if(cloudState.user){
       refreshServerProStatus(false).then(()=>{
@@ -5179,11 +5206,39 @@ const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProf
       }).catch(e=>console.warn('[CloudState] Pro status refresh failed:', e.message));
     }
   }
+
   document.addEventListener('visibilitychange', function(){
     if(document.visibilityState === 'visible') _tabReconnect();
   });
   // Belt-and-suspenders: mobile Safari doesn't always fire visibilitychange
   window.addEventListener('focus', function(){ _tabReconnect(); });
+
+  // ── Heartbeat: proactively refresh the token every 20 minutes ────────
+  // Prevents token expiry mid-session during a long brew day without
+  // needing the user to switch tabs. getSession() is free (auth only).
+  setInterval(function(){
+    if(cloudState.client && cloudState.user && !document.hidden){
+      cloudState.client.auth.getSession().catch(e=>{
+        console.warn('[CloudState] Heartbeat refresh failed:', e.message);
+      });
+    }
+  }, 20 * 60 * 1000); // every 20 minutes
+})();
+
+// ── Workflow timer: wake-from-sleep recovery ──────────────────────────────
+// When the screen wakes or tab becomes visible, immediately re-evaluate the
+// timer using wall-clock time so any time that passed during sleep is
+// accounted for instantly (fires alarm if step already expired).
+(function(){
+  function _workflowWakeCheck(){
+    if(typeof workflowState !== 'undefined' && workflowState.running && workflowState.stepStartWallTime){
+      tickWorkflow();
+    }
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible') _workflowWakeCheck();
+  });
+  window.addEventListener('focus', function(){ _workflowWakeCheck(); });
 })();
 // ─────────────────────────────────────────────────────────────────────
 
