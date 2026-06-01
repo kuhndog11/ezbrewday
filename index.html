@@ -3644,10 +3644,8 @@ if(e.duration<=0&&e.manual){
   updateWorkflowUI();return;
 }
 if(e.duration<=0)return pauseWorkflow(),void updateWorkflowUI();
-// Wall-clock based: calculate remaining from actual start time so sleep/suspend doesn't freeze or corrupt the timer
 if(workflowState.stepStartWallTime){
   const elapsedSec=(Date.now()-workflowState.stepStartWallTime.getTime())/1000;
-  // Sanity check: if elapsed is negative or impossibly large, reset to tick-based
   if(elapsedSec>=0 && elapsedSec<86400){
     workflowState.remaining=Math.max(0,(workflowState.stepDuration||e.duration)-elapsedSec);
   }else{
@@ -5158,10 +5156,6 @@ function hydrateBrandSettings(){
 const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProfiles:[],proLicense:null};
 
 // ── Re-connect when user returns to this tab ─────────────────────────
-// Uses getSession() (which triggers a real JWT refresh via the refresh
-// token if needed) rather than getUser() which just validates the cached
-// — possibly expired — token. If the refresh fails, shows OFFLINE so the
-// user knows to re-sign-in rather than silently failing.
 (function(){
   let _busy = false;
   async function _tabReconnect(){
@@ -5198,10 +5192,8 @@ const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProf
   document.addEventListener('visibilitychange', function(){
     if(document.visibilityState === 'visible') _tabReconnect();
   });
-  // Belt-and-suspenders: mobile Safari doesn't always fire visibilitychange
   window.addEventListener('focus', function(){ _tabReconnect(); });
-
-  // ── Heartbeat: keep token alive every 20 minutes mid-session ─────────
+  // Heartbeat: keep token alive every 20 minutes mid-session
   setInterval(function(){
     if(cloudState.client && cloudState.user && !document.hidden){
       cloudState.client.auth.getSession().catch(e=>{
@@ -5329,7 +5321,7 @@ function refreshCloudModalAccess(){
 
 
 async function showCloudLibrary(){
-  document.getElementById('cloud-overlay')?.classList.add('show');
+  openCloudOverlay();
   refreshCloudModalAccess();
   if(await ensureCloudReady()){
     await refreshServerProStatus(false);
@@ -5342,7 +5334,7 @@ async function showCloudLibrary(){
 }
 
 async function showCloudModal(){checkEdgeStorageWarning&&checkEdgeStorageWarning();
-  document.getElementById('cloud-overlay')?.classList.add('show');
+  openCloudOverlay();
   refreshCloudModalAccess();
   // Re-establish session if needed (fast - reads localStorage)
   if(cloudState.client && !cloudState.user){
@@ -5358,7 +5350,21 @@ async function showCloudModal(){checkEdgeStorageWarning&&checkEdgeStorageWarning
     }).catch(()=>{});
   }
 }
-function closeCloudModal(){document.getElementById('cloud-overlay')?.classList.remove('show');}
+function closeCloudModal(){
+  const overlay=document.getElementById('cloud-overlay');
+  if(!overlay) return;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden','true');
+  // Blur any focused element inside the overlay so it can't block other modals
+  const focused=overlay.querySelector(':focus');
+  if(focused) focused.blur();
+}
+function openCloudOverlay(){
+  const overlay=document.getElementById('cloud-overlay');
+  if(!overlay) return;
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden','false');
+}
 function saveCloudConfig(){updateCloudStatus('Connection is configured automatically.','ok'); connectSupabase(true)}
 async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} if(cloudState.client){
   // FIX: Use getSession() first — reads localStorage with NO network call,
@@ -5733,7 +5739,7 @@ async function cloudSaveCurrentRecipe(){
   }
 
   updateCloudStatus('Cloud recipe saved: '+name,'ok');
-  document.getElementById('cloud-overlay')?.classList.add('show');
+  openCloudOverlay();
   await refreshCloudRecipes();
   refreshCloudModalAccess();
   try{ alert('Cloud recipe saved: '+name); }catch(e){}
@@ -5789,7 +5795,7 @@ async function cloudSaveCurrentEquipmentProfile(){
   populateEquipmentMethodSelects(name);
   renderEquipmentProfileList();
   updateCloudStatus('Cloud equipment profile saved: '+name,'ok');
-  document.getElementById('cloud-overlay')?.classList.add('show');
+  openCloudOverlay();
   await refreshCloudRecipes();
   refreshCloudModalAccess();
   try{ alert('Cloud equipment profile saved: '+name); }catch(e){}
@@ -12917,8 +12923,6 @@ if(_origRefreshProUI){
 
     /* ── Open / Close ── */
     async function showCommunityLibrary(){
-      // Ensure Pro status is resolved before gating — proLicense may still be
-      // null on first load due to the async DB call not yet completing.
       if(cloudState.user && cloudState.proLicense === null){
         try{ await refreshServerProStatus(false); }catch(_){}
       }
@@ -12934,17 +12938,7 @@ if(_origRefreshProUI){
           refreshProUI();
         }
       }catch(_){}
-      // Fully dismiss cloud overlay before opening community — the cloud overlay
-      // retains focus on a button even when visually hidden, which blocks the
-      // community overlay from receiving pointer events at the same z-index.
       closeCloudModal();
-      // Blur any focused element inside the cloud overlay to clear the aria-hidden conflict
-      const cloudOverlay = document.getElementById('cloud-overlay');
-      if(cloudOverlay){
-        const focused = cloudOverlay.querySelector(':focus');
-        if(focused) focused.blur();
-        cloudOverlay.setAttribute('aria-hidden','true');
-      }
       communityShowTab('browse');
       document.getElementById('community-overlay')?.classList.add('show');
       communityCaptureCurrentRecipe(false);
