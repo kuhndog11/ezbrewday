@@ -3643,7 +3643,21 @@ if(e.duration<=0&&e.manual){
   }
   updateWorkflowUI();return;
 }
-if(e.duration<=0)return pauseWorkflow(),void updateWorkflowUI();workflowState.remaining=Math.max(0,(workflowState.remaining||e.duration)-1),updateWorkflowUI(),workflowState.remaining<=0&&(pauseWorkflow(),workflowState.remaining=0,(function(){
+if(e.duration<=0)return pauseWorkflow(),void updateWorkflowUI();
+// Wall-clock based: calculate remaining from actual start time so sleep/suspend doesn't freeze or corrupt the timer
+if(workflowState.stepStartWallTime){
+  const elapsedSec=(Date.now()-workflowState.stepStartWallTime.getTime())/1000;
+  // Sanity check: if elapsed is negative or impossibly large, reset to tick-based
+  if(elapsedSec>=0 && elapsedSec<86400){
+    workflowState.remaining=Math.max(0,(workflowState.stepDuration||e.duration)-elapsedSec);
+  }else{
+    workflowState.stepStartWallTime=new Date(Date.now()-((workflowState.stepDuration||e.duration)-(workflowState.remaining||0))*1000);
+    workflowState.remaining=Math.max(0,(workflowState.remaining||e.duration)-1);
+  }
+}else{
+  workflowState.remaining=Math.max(0,(workflowState.remaining||e.duration)-1);
+}
+updateWorkflowUI(),workflowState.remaining<=0&&(pauseWorkflow(),workflowState.remaining=0,(function(){
   const stepName=e.name;
   let actualMsg='';
   if(workflowState.stepStartWallTime){
@@ -5144,33 +5158,35 @@ function hydrateBrandSettings(){
 const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProfiles:[],proLicense:null};
 
 // ── Re-connect when user returns to this tab ─────────────────────────
-// cloudState is in-memory only. After switching tabs the Supabase SDK's
-// token-refresh timer may be throttled by the browser. This listener
-// calls connectSupabase() (now using getSession() = localStorage read,
-// no network needed) whenever the tab becomes visible or regains focus,
-// restoring cloudState.user so all buttons work again.
+// Uses getSession() (which triggers a real JWT refresh via the refresh
+// token if needed) rather than getUser() which just validates the cached
+// — possibly expired — token. If the refresh fails, shows OFFLINE so the
+// user knows to re-sign-in rather than silently failing.
 (function(){
   let _busy = false;
   async function _tabReconnect(){
     if(_busy) return;
     _busy = true;
     try {
-      // Step 1: Restore session from localStorage (fast, no network)
       await connectSupabase(false);
-      if(cloudState.user){
-        updateCloudStatus('Connected as ' + cloudState.user.email, 'ok');
-        refreshCloudModalAccess();
-        refreshProUI();
-        forceUnlockCommunity();
+      if(cloudState.client){
+        const { data: sessionData, error: sessionError } = await cloudState.client.auth.getSession();
+        if(sessionError || !sessionData?.session){
+          console.warn('[CloudState] Session refresh failed:', sessionError?.message || 'no session');
+          cloudState.user = null;
+          updateCloudStatus('Cloud session expired — please sign in again.', 'bad');
+          refreshCloudModalAccess();
+          refreshProUI();
+        } else {
+          cloudState.user = sessionData.session.user;
+          updateCloudStatus('Connected as ' + cloudState.user.email, 'ok');
+          refreshCloudModalAccess();
+          refreshProUI();
+          forceUnlockCommunity();
+        }
       }
     } catch(e){ console.warn('[CloudState] Tab reconnect error:', e.message); }
-    finally {
-      // Release the busy lock immediately after session restore
-      // so Save clicks are never blocked by the background pro-status fetch
-      _busy = false;
-    }
-    // Step 2: Refresh pro license in background (slow DB query, cached after first call)
-    // Runs AFTER _busy is released so it never blocks button clicks
+    finally { _busy = false; }
     if(cloudState.user){
       refreshServerProStatus(false).then(()=>{
         refreshCloudModalAccess();
@@ -5184,6 +5200,28 @@ const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProf
   });
   // Belt-and-suspenders: mobile Safari doesn't always fire visibilitychange
   window.addEventListener('focus', function(){ _tabReconnect(); });
+
+  // ── Heartbeat: keep token alive every 20 minutes mid-session ─────────
+  setInterval(function(){
+    if(cloudState.client && cloudState.user && !document.hidden){
+      cloudState.client.auth.getSession().catch(e=>{
+        console.warn('[CloudState] Heartbeat refresh failed:', e.message);
+      });
+    }
+  }, 20 * 60 * 1000);
+})();
+
+// ── Workflow timer: wake-from-sleep recovery ──────────────────────────────
+(function(){
+  function _workflowWakeCheck(){
+    if(typeof workflowState !== 'undefined' && workflowState.running && workflowState.stepStartWallTime){
+      tickWorkflow();
+    }
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible') _workflowWakeCheck();
+  });
+  window.addEventListener('focus', function(){ _workflowWakeCheck(); });
 })();
 // ─────────────────────────────────────────────────────────────────────
 
@@ -6083,9 +6121,6 @@ function handleProtectedTabClick(tabId,el,event){
   return showTab(tabId,el);
 }
 function forceUnlockCommunity(){
-  // If the user is signed in but proLicense hasn't loaded yet (still pending
-  // the async DB call), treat as pro optimistically — the gate inside
-  // showCommunityLibrary will do a fresh check before opening anyway.
   const proStatusPending = !!(cloudState.user && cloudState.proLicense === null);
   const pro = isProUser() || proStatusPending;
   const headerBtn=document.getElementById('community-header-btn');
@@ -12651,7 +12686,7 @@ if(_origRefreshProUI){
     }
   </style>
 
-  <div class="modal-overlay" id="community-overlay" aria-hidden="true">
+  <div class="modal-overlay" id="community-overlay" aria-hidden="true" style="z-index:1050">
     <div class="modal-card" style="max-width:900px;width:100%">
       <div class="modal-head">
         <div style="display:flex;align-items:center;gap:14px">
@@ -12899,7 +12934,17 @@ if(_origRefreshProUI){
           refreshProUI();
         }
       }catch(_){}
+      // Fully dismiss cloud overlay before opening community — the cloud overlay
+      // retains focus on a button even when visually hidden, which blocks the
+      // community overlay from receiving pointer events at the same z-index.
       closeCloudModal();
+      // Blur any focused element inside the cloud overlay to clear the aria-hidden conflict
+      const cloudOverlay = document.getElementById('cloud-overlay');
+      if(cloudOverlay){
+        const focused = cloudOverlay.querySelector(':focus');
+        if(focused) focused.blur();
+        cloudOverlay.setAttribute('aria-hidden','true');
+      }
       communityShowTab('browse');
       document.getElementById('community-overlay')?.classList.add('show');
       communityCaptureCurrentRecipe(false);
