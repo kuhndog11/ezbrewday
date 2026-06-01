@@ -5163,7 +5163,6 @@ const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProf
     _busy = true;
     try {
       await connectSupabase(false);
-      // connectSupabase now handles deadlock via localStorage fallback
       if(cloudState.user){
         updateCloudStatus('Connected as ' + cloudState.user.email, 'ok');
         refreshCloudModalAccess();
@@ -5188,14 +5187,13 @@ const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProf
     if(document.visibilityState === 'visible') _tabReconnect();
   });
   window.addEventListener('focus', function(){ _tabReconnect(); });
-  // Heartbeat: keep token alive every 20 minutes — use direct REST to avoid deadlock
+  // Heartbeat via direct REST — never touches JS client to avoid deadlock
   setInterval(function(){
     if(!cloudState.user || document.hidden) return;
     const cfg = getCloudConfig();
     const tokenKey = Object.keys(localStorage).find(k=>k.includes('auth-token'));
     const token = tokenKey ? JSON.parse(localStorage.getItem(tokenKey)||'{}')?.access_token : null;
     if(!token) return;
-    // Ping the user endpoint to keep the session warm without touching the JS client
     fetch(cfg.url+'/auth/v1/user', {
       headers:{'apikey':cfg.anon,'Authorization':'Bearer '+token}
     }).catch(()=>{});
@@ -5365,40 +5363,35 @@ function openCloudOverlay(){
 }
 function saveCloudConfig(){updateCloudStatus('Connection is configured automatically.','ok'); connectSupabase(true)}
 async function connectSupabase(showMsg){try{const cfg=getCloudConfig(); if(!cfg.url||!cfg.anon){if(showMsg) updateCloudStatus('Add your Supabase URL and anon key first.', 'bad'); return false} if(!window.supabase||!window.supabase.createClient){updateCloudStatus('Supabase library failed to load.', 'bad'); return false} if(cloudState.client){
-  // Use getSession() with a timeout to detect deadlock.
-  // CRITICAL: Never recreate the client — multiple GoTrueClient instances
-  // sharing the same storage key cause phantom sign-outs.
+  // Use getSession() with timeout — NEVER recreate client on deadlock as
+  // multiple GoTrueClient instances cause phantom sign-outs.
   let _su=null;
   try{
-    const _raceResult = await Promise.race([
+    const _r=await Promise.race([
       cloudState.client.auth.getSession(),
       new Promise((_,reject)=>setTimeout(()=>reject(new Error('DEADLOCK')),5000))
     ]);
-    _su=_raceResult?.data?.session?.user||null;
+    _su=_r?.data?.session?.user||null;
     console.log('[connectSupabase] getSession result: user='+!!_su);
   }catch(e){
     if(e.message==='DEADLOCK'){
-      // Client is deadlocked — read session from localStorage directly as fallback
       console.warn('[connectSupabase] getSession deadlocked — reading from localStorage');
       try{
         const _key=Object.keys(localStorage).find(k=>k.includes('auth-token'));
-        const _stored=_key?JSON.parse(localStorage.getItem(_key)||'{}'):null;
-        if(_stored?.user) _su=_stored.user;
-        else if(_stored?.access_token){
-          // Parse user from JWT
-          const _payload=JSON.parse(atob(_stored.access_token.split('.')[1]));
-          _su={id:_payload.sub,email:_payload.email,role:_payload.role};
+        const _s=_key?JSON.parse(localStorage.getItem(_key)||'{}'):null;
+        if(_s?.user) _su=_s.user;
+        else if(_s?.access_token){
+          const _p=JSON.parse(atob(_s.access_token.split('.')[1]));
+          _su={id:_p.sub,email:_p.email,role:_p.role};
         }
       }catch(_){}
       console.warn('[connectSupabase] localStorage fallback user='+!!_su);
-    }else{
-      console.warn('[connectSupabase] getSession threw:',e.message);
-    }
+    }else{ console.warn('[connectSupabase] getSession threw:',e.message); }
   }
   if(!_su){
     console.log('[connectSupabase] getSession gave no user, trying getUser...');
     try{
-      const _ud = await Promise.race([
+      const _ud=await Promise.race([
         cloudState.client.auth.getUser(),
         new Promise((_,reject)=>setTimeout(()=>reject(new Error('DEADLOCK')),5000))
       ]);
@@ -13114,8 +13107,6 @@ if(_origRefreshProUI){
         return;
       }
       if(list) list.innerHTML='<div class="community-empty">Loading…</div>';
-      // Always use direct REST fetch — proven reliable even when Supabase JS client
-      // is deadlocked. Community recipes are public so anon key works fine.
       try {
         const cfg = getCloudConfig();
         const tokenKey = Object.keys(localStorage).find(k => k.includes('auth-token'));
@@ -13539,12 +13530,24 @@ document.addEventListener('keydown', function(e){
         created_at: new Date().toISOString()
       };
 
-      // Save to Supabase
-      if(cloudState?.client){
-        const { error } = await cloudState.client
-          .from(FEEDBACK_TABLE)
-          .insert([payload]);
-        if(error) throw error;
+      // Save to Supabase via direct REST fetch — bypasses deadlocked JS client
+      const _cfg = getCloudConfig();
+      const _tokenKey = Object.keys(localStorage).find(k=>k.includes('auth-token'));
+      const _stored = _tokenKey ? JSON.parse(localStorage.getItem(_tokenKey)||'{}') : {};
+      const _token = _stored?.access_token || _stored?.token || _cfg.anon;
+      const _fbResp = await fetch(_cfg.url+'/rest/v1/'+FEEDBACK_TABLE, {
+        method: 'POST',
+        headers: {
+          'apikey': _cfg.anon,
+          'Authorization': 'Bearer '+_token,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+      if(!_fbResp.ok){
+        const _errText = await _fbResp.text();
+        throw new Error('HTTP '+_fbResp.status+': '+_errText);
       }
 
       // Send email notification via Netlify function
@@ -13607,16 +13610,15 @@ document.addEventListener('keydown', function(e){
     board.innerHTML = '<div class="fb-loading" id="fb-ideas-loading">Loading ideas...</div>';
 
     try {
-      if(!cloudState?.client) throw new Error('Not connected');
-
-      const { data, error } = await cloudState.client
-        .from(FEEDBACK_TABLE)
-        .select('*')
-        .eq('type', 'idea')
-        .order('votes', { ascending: false })
-        .limit(50);
-
-      if(error) throw error;
+      const _cfg = getCloudConfig();
+      const _tokenKey = Object.keys(localStorage).find(k=>k.includes('auth-token'));
+      const _stored = _tokenKey ? JSON.parse(localStorage.getItem(_tokenKey)||'{}') : {};
+      const _token = _stored?.access_token || _stored?.token || _cfg.anon;
+      const _resp = await fetch(_cfg.url+'/rest/v1/'+FEEDBACK_TABLE+'?select=*&type=eq.idea&order=votes.desc&limit=50', {
+        headers: { 'apikey': _cfg.anon, 'Authorization': 'Bearer '+_token }
+      });
+      if(!_resp.ok) throw new Error('HTTP '+_resp.status);
+      const data = await _resp.json();
 
       if(!data || data.length === 0){
         board.innerHTML = `
@@ -13680,12 +13682,22 @@ document.addEventListener('keydown', function(e){
     }
     localStorage.setItem('ezbd_voted_ideas', JSON.stringify(_votedIds));
 
-    // Update Supabase
+    // Update via direct REST fetch — bypasses deadlocked JS client
     try {
-      await cloudState.client
-        .from(FEEDBACK_TABLE)
-        .update({ votes: newCount })
-        .eq('id', id);
+      const _cfg = getCloudConfig();
+      const _tokenKey = Object.keys(localStorage).find(k=>k.includes('auth-token'));
+      const _stored = _tokenKey ? JSON.parse(localStorage.getItem(_tokenKey)||'{}') : {};
+      const _token = _stored?.access_token || _stored?.token || _cfg.anon;
+      await fetch(_cfg.url+'/rest/v1/'+FEEDBACK_TABLE+'?id=eq.'+id, {
+        method: 'PATCH',
+        headers: {
+          'apikey': _cfg.anon,
+          'Authorization': 'Bearer '+_token,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ votes: newCount })
+      });
     } catch(err){
       console.error('Vote error:', err);
     }
