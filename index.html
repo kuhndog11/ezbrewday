@@ -5193,7 +5193,6 @@ const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProf
     if(document.visibilityState === 'visible') _tabReconnect();
   });
   window.addEventListener('focus', function(){ _tabReconnect(); });
-  // Heartbeat: keep token alive every 20 minutes mid-session
   setInterval(function(){
     if(cloudState.client && cloudState.user && !document.hidden){
       cloudState.client.auth.getSession().catch(e=>{
@@ -5355,7 +5354,6 @@ function closeCloudModal(){
   if(!overlay) return;
   overlay.classList.remove('show');
   overlay.setAttribute('aria-hidden','true');
-  // Blur any focused element inside the overlay so it can't block other modals
   const focused=overlay.querySelector(':focus');
   if(focused) focused.blur();
 }
@@ -13120,6 +13118,17 @@ if(_origRefreshProUI){
       closeCommunityLibrary();
       try{ showTab('brew-notes',document.querySelector('.tab[onclick*="brew-notes"]')); }catch(e){}
     }
+
+    // ── Expose all community functions to window so onclick handlers can reach them ──
+    // These are defined in a <script> inside the overlay div. Some browsers scope
+    // them locally rather than on window, making onclick="showCommunityLibrary()" fail.
+    window.showCommunityLibrary    = showCommunityLibrary;
+    window.closeCommunityLibrary   = closeCommunityLibrary;
+    window.communityShowTab        = communityShowTab;
+    window.communityRefreshList    = communityRefreshList;
+    window.communityCaptureCurrentRecipe = communityCaptureCurrentRecipe;
+    window.communityApplyFilters   = communityApplyFilters;
+    window.communitySetStatus      = communitySetStatus;
   </script>
 
 
