@@ -6171,18 +6171,42 @@ async function refreshServerProStatus(showMsg){
      (now - cloudState._proStatusCheckedAt) < CACHE_MS){
     return cloudState.proLicense;
   }
-  const {data,error}=await cloudState.client
-    .from('pro_licenses')
-    .select('id,email,plan,status,starts_at,expires_at,license_key,user_id')
-    .order('expires_at',{ascending:false});
-  if(error){
-    console.warn('pro_licenses check failed', error);
-    if(showMsg) updateCloudStatus('Could not verify Pro status from server: '+error.message,'bad');
-    // Don't clear proLicense on error if we already have one — keep using cached value
-    if(!cloudState.proLicense) refreshProUI();
-    return cloudState.proLicense||null;
+  // Fetch pro_licenses with REST fallback to bypass getSession deadlock in Edge/Firefox
+  let proData = null;
+  let proFetchOk = false;
+  try{
+    const res = await Promise.race([
+      cloudState.client.from('pro_licenses').select('id,email,plan,status,starts_at,expires_at,license_key,user_id').order('expires_at',{ascending:false}),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('PRO_STATUS_TIMEOUT')),6000))
+    ]);
+    if(res && !res.error){ proData = res.data; proFetchOk = true; }
+    else if(res?.error){ console.warn('pro_licenses check failed', res.error); }
+  }catch(e){
+    console.warn('[refreshServerProStatus] Supabase JS timed out/threw:', e.message, '; trying REST fallback');
   }
-  cloudState.proLicense=getBestVisibleProLicense(data||[]);
+  if(!proFetchOk){
+    try{
+      const cfg = getCloudConfig();
+      const key = Object.keys(localStorage).find(k=>k.includes('auth-token'));
+      const raw = key ? (JSON.parse(localStorage.getItem(key)||'{}')||{}) : {};
+      const token = raw.access_token || (raw.currentSession && raw.currentSession.access_token) || null;
+      if(!cfg.url || !token) throw new Error('No REST credentials');
+      const url = cfg.url+'/rest/v1/pro_licenses?select=id,email,plan,status,starts_at,expires_at,license_key,user_id&order=expires_at.desc';
+      const resp = await fetch(url,{headers:{'apikey':cfg.anon,'Authorization':'Bearer '+token,'Accept':'application/json'}});
+      if(resp.ok){ proData = await resp.json(); proFetchOk = true; }
+      else{
+        const b = await resp.json().catch(()=>({}));
+        console.warn('[refreshServerProStatus] REST fallback failed:', b.message || 'HTTP '+resp.status);
+        if(!cloudState.proLicense) refreshProUI();
+        return cloudState.proLicense||null;
+      }
+    }catch(fe){
+      console.warn('[refreshServerProStatus] REST fallback threw:', fe.message);
+      if(!cloudState.proLicense) refreshProUI();
+      return cloudState.proLicense||null;
+    }
+  }
+  cloudState.proLicense=getBestVisibleProLicense(proData||[]);
   cloudState._proStatusCheckedAt = now;
   if(showMsg && cloudState.proLicense?.active){
     updateCloudStatus('Pro verified through license admin table.','ok');
