@@ -5703,6 +5703,13 @@ function applyCloudPayload(p){
 }
 async function ensureCloudReady(){
   console.log('[ensureCloudReady] client='+!!cloudState.client+' user='+!!cloudState.user+' proLicense='+!!cloudState.proLicense);
+  // Short-circuit: if client and user are already set, skip connectSupabase entirely.
+  // connectSupabase triggers a getSession() call that deadlocks in Edge/Firefox
+  // with tracking prevention, causing saves and refreshes to silently fail.
+  if(cloudState.client && cloudState.user){
+    console.log('[ensureCloudReady] already ready — skipping connectSupabase');
+    return true;
+  }
   const connected = await connectSupabase(false);
   console.log('[ensureCloudReady] after connectSupabase: connected='+connected+' user='+!!cloudState.user);
   if(!connected){
@@ -5751,12 +5758,55 @@ async function cloudSaveCurrentRecipe(){
     updated_at:new Date().toISOString()
   };
 
-  const {error}=await cloudState.client
-    .from(CLOUD_TABLE)
-    .upsert(row,{onConflict:'user_id,name'});
+  // Helper: extract a live access token from localStorage (bypasses getSession deadlock)
+  function _getStoredAccessToken(){
+    try{
+      const key=Object.keys(localStorage).find(k=>k.includes('auth-token'));
+      if(!key) return null;
+      const raw=JSON.parse(localStorage.getItem(key)||'{}')||{};
+      return raw.access_token || (raw.currentSession && raw.currentSession.access_token) || null;
+    }catch(_){return null;}
+  }
 
-  if(error){
-    updateCloudStatus('Cloud save failed: '+error.message,'bad');
+  let saveError = null;
+
+  // First attempt: Supabase JS client (fast path)
+  try{
+    const res = await Promise.race([
+      cloudState.client.from(CLOUD_TABLE).upsert(row,{onConflict:'user_id,name'}),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('SAVE_TIMEOUT')),8000))
+    ]);
+    saveError = res?.error || null;
+  }catch(e){
+    console.warn('[SaveRecipe] Supabase JS upsert failed/timed out:',e.message,'; trying REST fallback');
+    // Fallback: direct REST API call using the stored JWT, which avoids the lock
+    try{
+      const cfg = getCloudConfig();
+      const token = _getStoredAccessToken();
+      if(!cfg.url || !token) throw new Error('No REST credentials available');
+      const resp = await fetch(cfg.url+'/rest/v1/'+CLOUD_TABLE+'?on_conflict=user_id,name', {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Prefer':'resolution=merge-duplicates,return=minimal',
+          'apikey': cfg.anon,
+          'Authorization':'Bearer '+token
+        },
+        body: JSON.stringify(row)
+      });
+      if(!resp.ok){
+        const body = await resp.json().catch(()=>({}));
+        saveError = {message: body.message || body.error || ('HTTP '+resp.status)};
+      } else {
+        saveError = null;
+      }
+    }catch(fe){
+      saveError = {message: fe.message};
+    }
+  }
+
+  if(saveError){
+    updateCloudStatus('Cloud save failed: '+saveError.message,'bad');
     showCloudModal();
     return;
   }
@@ -5859,16 +5909,44 @@ async function refreshCloudRecipes(){
   const list=cloudSel('saved-cloud-list');
   const equipmentList=cloudSel('saved-cloud-equipment-list');
   if(!isProUser()){ refreshCloudModalAccess(); return; }
-  if(list && !cloudState.user){
-    list.innerHTML='<div class="saved-item"><div><div class="saved-item-title">No signed-in user</div><div class="saved-item-sub">Sign in to view your cloud recipe library.</div></div></div>';
+  // If not yet connected, attempt connection; otherwise use existing state directly
+  if(!cloudState.client || !cloudState.user){
+    if(list && !cloudState.user){
+      list.innerHTML='<div class="saved-item"><div><div class="saved-item-title">No signed-in user</div><div class="saved-item-sub">Sign in to view your cloud recipe library.</div></div></div>';
+    }
+    if(equipmentList && !cloudState.user){
+      equipmentList.innerHTML='<div class="saved-item"><div><div class="saved-item-title">No signed-in user</div><div class="saved-item-sub">Sign in to view your cloud equipment profiles.</div></div></div>';
+    }
+    if(!cloudState.client||!cloudState.user) return;
   }
-  if(equipmentList && !cloudState.user){
-    equipmentList.innerHTML='<div class="saved-item"><div><div class="saved-item-title">No signed-in user</div><div class="saved-item-sub">Sign in to view your cloud equipment profiles.</div></div></div>';
+  // Fetch with REST fallback in case Supabase JS client is deadlocked
+  let rows = [];
+  let fetchOk = false;
+  try{
+    const res = await Promise.race([
+      cloudState.client.from(CLOUD_TABLE).select('id,name,payload,updated_at,created_at').eq('user_id',cloudState.user.id).order('updated_at',{ascending:false}),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('REFRESH_TIMEOUT')),8000))
+    ]);
+    if(res && !res.error){ rows = res.data||[]; fetchOk = true; }
+    else if(res?.error){ console.warn('[refreshCloudRecipes] Supabase JS error:',res.error.message); }
+  }catch(e){
+    console.warn('[refreshCloudRecipes] Supabase JS timed out/threw:',e.message,'; trying REST fallback');
   }
-  if(!cloudState.client||!cloudState.user) return;
-  const {data,error}=await cloudState.client.from(CLOUD_TABLE).select('id,name,payload,updated_at,created_at').eq('user_id',cloudState.user.id).order('updated_at',{ascending:false});
-  if(error){updateCloudStatus(error.message,'bad'); return}
-  const rows=data||[];
+  if(!fetchOk){
+    try{
+      const cfg = getCloudConfig();
+      const key = Object.keys(localStorage).find(k=>k.includes('auth-token'));
+      const raw = key ? (JSON.parse(localStorage.getItem(key)||'{}')||{}) : {};
+      const token = raw.access_token || (raw.currentSession && raw.currentSession.access_token) || null;
+      if(!cfg.url || !token) throw new Error('No REST credentials');
+      const url = cfg.url+'/rest/v1/'+CLOUD_TABLE+'?select=id,name,payload,updated_at,created_at&user_id=eq.'+encodeURIComponent(cloudState.user.id)+'&order=updated_at.desc';
+      const resp = await fetch(url,{headers:{'apikey':cfg.anon,'Authorization':'Bearer '+token,'Accept':'application/json'}});
+      if(resp.ok){ rows = await resp.json(); fetchOk = true; }
+      else{ const b=await resp.json().catch(()=>({})); updateCloudStatus('Refresh failed: '+(b.message||'HTTP '+resp.status),'bad'); return; }
+    }catch(fe){
+      updateCloudStatus('Refresh failed: '+fe.message,'bad'); return;
+    }
+  }
   cloudState.recipes=rows.filter(item=>item?.payload?.meta?.entityType!=='equipment-profile');
   cloudState.equipmentProfiles=rows.filter(item=>item?.payload?.meta?.entityType==='equipment-profile');
   renderCloudRecipes();
