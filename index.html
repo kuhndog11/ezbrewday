@@ -1112,6 +1112,73 @@ button[onclick="connectSupabase(true)"]{display:none!important}
   letter-spacing: .06em;
   text-transform: uppercase;
 }
+/* ── Comments Ticker ── */
+.tbd-ticker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.25);
+  padding: 7px 20px;
+  overflow: hidden;
+  flex-shrink: 0;
+  min-height: 36px;
+}
+.tbd-ticker-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--teal);
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(20,184,166,.25);
+  padding-right: 12px;
+}
+.tbd-ticker-track {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+.tbd-ticker-inner {
+  display: flex;
+  gap: 0;
+  white-space: nowrap;
+  animation: tbdTickerScroll 0s linear infinite;
+  will-change: transform;
+}
+@keyframes tbdTickerScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.tbd-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 32px 0 0;
+  font-size: 11.5px;
+  color: rgba(255,255,255,.55);
+}
+.tbd-ticker-stars {
+  color: var(--teal);
+  letter-spacing: 1px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.tbd-ticker-beer {
+  font-weight: 700;
+  color: rgba(255,255,255,.8);
+  flex-shrink: 0;
+}
+.tbd-ticker-comment {
+  color: rgba(255,255,255,.45);
+  font-style: italic;
+}
+.tbd-ticker-sep {
+  color: rgba(255,255,255,.15);
+  padding: 0 8px;
+  flex-shrink: 0;
+}
 .tpg-body{padding:8px 10px;flex:1;display:flex;flex-direction:column;gap:5px;overflow:hidden}
 .tbd-card-body{flex:1;display:flex;flex-direction:column;justify-content:center;padding:clamp(10px,2vw,24px) clamp(12px,2.5vw,28px);gap:6px}
 
@@ -1473,6 +1540,12 @@ button[onclick="connectSupabase(true)"]{display:none!important}
     <div class="tbd-live"><div class="tbd-pulse"></div>Live</div>
   </div>
   <div class="tbd-grid" id="tbd-grid"></div>
+  <div class="tbd-ticker-wrap" id="tbd-ticker-wrap" style="display:none">
+    <div class="tbd-ticker-label">Guest Reviews</div>
+    <div class="tbd-ticker-track" id="tbd-ticker-track">
+      <div class="tbd-ticker-inner" id="tbd-ticker-inner"></div>
+    </div>
+  </div>
   <div class="tbd-footer">
     <div class="tbd-footer-clock" id="tbd-clock"></div>
     <div class="tbd-footer-brand">EzBrewDay</div>
@@ -10636,6 +10709,61 @@ function tapSetStatus(msg,type){
   if(type==='ok') setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; },3000);
 }
 
+// ── Drag-to-reorder tap board ───────────────────────
+let _tapDragFrom = null;
+
+function tapDragEnd(el){
+  el.style.opacity = '';
+  el.style.cursor = 'grab';
+}
+
+function tapDragHandleDown(handle){
+  const card = handle.closest('.tap-card');
+  if(card) card.style.cursor = 'grabbing';
+}
+
+function tapDragHandleUp(handle){
+  const card = handle.closest('.tap-card');
+  if(card) card.style.cursor = 'grab';
+}
+
+function tapDragStart(e, fromIdx){
+  _tapDragFrom = fromIdx;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.style.opacity = '0.4';
+}
+
+function tapDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.style.outline = '2px solid var(--teal)';
+  e.currentTarget.style.outlineOffset = '-2px';
+}
+
+function tapDragLeave(e){
+  e.currentTarget.style.outline = '';
+  e.currentTarget.style.outlineOffset = '';
+}
+
+function tapDrop(e, toIdx){
+  e.preventDefault();
+  e.currentTarget.style.outline = '';
+  e.currentTarget.style.outlineOffset = '';
+  if(_tapDragFrom === null || _tapDragFrom === toIdx){ _tapDragFrom=null; return; }
+
+  // Reorder tapState.slots
+  const moved = tapState.slots.splice(_tapDragFrom, 1)[0];
+  tapState.slots.splice(toIdx, 0, moved);
+
+  // Renumber tap_number to match new positions
+  tapState.slots.forEach((sl, idx) => { sl.tap_number = idx + 1; });
+
+  _tapDragFrom = null;
+  tapState.dirty = true;
+  renderTapBoard();
+  tapSetStatus('Taps reordered — click Save to Cloud to keep', 'ok');
+}
+
 // ── Render tap board ────────────────────────────────
 function renderTapBoard(){
   const board = document.getElementById('tap-board');
@@ -10659,6 +10787,7 @@ function renderTapBoard(){
 
     // ── card: numbered header bar with status pill ──
     const cardHead = '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">'
+      + '<div title="Drag to reorder" style="cursor:grab;color:var(--text3);font-size:14px;opacity:.4;flex-shrink:0;padding:0 2px;user-select:none" onmousedown="tapDragHandleDown(this)" onmouseup="tapDragHandleUp(this)">⠿</div>'
       + '<div style="width:28px;height:28px;border-radius:50%;background:var(--teal3);border:1.5px solid var(--teal);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--teal);flex-shrink:0">'+tapNum+'</div>'
       + '<div style="flex:1;min-width:0">'
       + '<div style="font-weight:700;font-size:13.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em">'+(slot.beer_name||'<span style="color:var(--text3);font-weight:400;font-size:12px">Tap '+tapNum+' — Empty</span>')+'</div>'
@@ -10760,7 +10889,7 @@ function renderTapBoard(){
       + '</div>'
       + '</div>';
 
-    return '<div class="card tap-card" id="tap-card-'+tapNum+'" style="position:relative;overflow:visible">'
+    return '<div class="card tap-card" id="tap-card-'+tapNum+'" draggable="true" data-tap-index="'+i+'" style="position:relative;overflow:visible;cursor:grab" ondragstart="tapDragStart(event,'+i+')" ondragend="tapDragEnd(this)" ondragover="tapDragOver(event)" ondragleave="tapDragLeave(event)" ondrop="tapDrop(event,'+i+')">'
       + cardHead
       + '<div style="padding:0">' + cardBody + '</div>'
       + editPanel
@@ -11121,6 +11250,21 @@ async function tapPublicFetch(table, filterKey, filterVal){
 }
 
 async function tapPublicPostRating(tapSlotRowId, tapNum, rating, comment){
+  // If called from local/fullscreen preview, resolve to real cloud row ID via handle
+  let realRowId = tapSlotRowId;
+  if(!tapSlotRowId || tapSlotRowId === '__local__'){
+    const handle = tapPublicGetHandle() || (typeof tapLoadSettings==='function' ? tapLoadSettings().handle : '');
+    if(handle){
+      try{
+        const rows = await tapPublicFetch('tap_slots');
+        const row  = rows.find(r=> (r.payload?.settings?.handle||'').toLowerCase()===handle.toLowerCase());
+        if(row) realRowId = row.id;
+      } catch(e){ /* fall through */ }
+    }
+    if(!realRowId || realRowId === '__local__'){
+      throw new Error('Ratings require a saved & published tap list. In the On Tap tab, click "Save to Cloud" then share via your public link or QR code.');
+    }
+  }
   const r = await fetch(`${TAP_PUBLIC_URL}/rest/v1/tap_ratings`, {
     method: 'POST',
     headers:{
@@ -11130,14 +11274,18 @@ async function tapPublicPostRating(tapSlotRowId, tapNum, rating, comment){
       'Prefer': 'return=minimal'
     },
     body: JSON.stringify({
-      tap_slot_row_id: tapSlotRowId,
+      tap_slot_row_id: realRowId,
       tap_number: tapNum,
       rating,
       comment: comment||null,
       created_at: new Date().toISOString()
     })
   });
-  if(!r.ok) throw new Error(await r.text());
+  if(!r.ok){
+    const errText = await r.text();
+    console.error('tapPublicPostRating failed:', errText);
+    throw new Error(errText);
+  }
 }
 
 function tapPublicSrmColor(srm){
@@ -11173,18 +11321,26 @@ function tapPublicSelectStar(tapNum, n){
 
 async function tapPublicSubmitRating(slotRowId, tapNum){
   const rating = tapPublicRatings[tapNum]||0;
-  if(!rating){ tapPublicToast('Please choose a star rating first','bad'); return; }
+  if(!rating){ tapPublicToast('Please pick a star rating first ⭐','bad'); return; }
   const comment = (document.getElementById(`tpg-comment-${tapNum}`)?.value||'').trim();
   const btn = document.getElementById(`tpg-submit-${tapNum}`);
   if(btn){ btn.disabled=true; btn.textContent='Submitting…'; }
   try{
     await tapPublicPostRating(slotRowId, tapNum, rating, comment);
-    tapPublicToast('Thanks for the rating! 🍻');
+    tapPublicToast('Thanks! Cheers 🍻');
     const section = document.getElementById(`tpg-rate-${tapNum}`);
-    if(section) section.innerHTML = `<div class="tpg-rating-display"><div class="tpg-avg-stars">${tapPublicAvgStars(rating)}</div><span>Thanks for rating!</span></div>`;
+    const starsHtml = [1,2,3,4,5].map(n=>`<span style="font-size:22px;color:${n<=rating?'var(--teal)':'rgba(255,255,255,.15)'}">★</span>`).join('');
+    if(section) section.innerHTML = `<div style="text-align:center;padding:10px 0">
+      <div style="font-size:28px;margin-bottom:6px">🍻</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">Thanks for rating!</div>
+      <div style="display:flex;gap:2px;justify-content:center;margin-bottom:4px">${starsHtml}</div>
+      ${comment ? `<div style="font-size:11px;color:var(--text3);font-style:italic;max-width:160px;margin:0 auto">"${comment.substring(0,80)}"</div>` : ''}
+    </div>`;
   } catch(e){
     if(btn){ btn.disabled=false; btn.textContent='Submit Rating'; }
-    tapPublicToast('Could not submit — please try again','bad');
+    const msg = e.message && e.message.length < 120 ? e.message : 'Could not submit — please try again';
+    tapPublicToast(msg,'bad');
+    console.error('Rating submit error:', e);
   }
 }
 
@@ -11213,7 +11369,6 @@ function tapPublicRenderGrid(slots, rowId, ratingsMap){
   grid.innerHTML = active.map((slot, idx)=>{
     const srm   = tapPublicSrmColor(slot.srm);
     const agg   = ratingsMap[slot.tap_number]||{avg:0,count:0};
-    const pct   = slot.pct_remaining!=null ? slot.pct_remaining : null;
     return `
     <div class="tpg-card" style="animation-delay:${idx*0.07}s">
       ${slot.beer_image ? `<div style="width:100%;height:120px;overflow:hidden;border-radius:8px 8px 0 0;margin:-1px -1px 0 -1px"><img src="${slot.beer_image}" style="width:100%;height:100%;object-fit:cover" alt="${tapPublicEsc(slot.beer_name)}"></div>` : ''}
@@ -11233,7 +11388,6 @@ function tapPublicRenderGrid(slots, rowId, ratingsMap){
         </div>` : ''}
         ${slot.description?`<div class="tpg-desc">${tapPublicEsc(slot.description)}</div>`:''}
         ${slot.tapped_date?`<div class="tpg-meta">Tapped ${tapPublicFmtDate(slot.tapped_date)}</div>`:''}
-        ${pct!=null?`<div class="tpg-keg-row"><div class="tpg-keg-bar"><div class="tpg-keg-fill" style="width:${Math.max(0,Math.min(100,pct))}%"></div></div><div class="tpg-keg-pct">${Math.round(pct)}%</div></div>`:''}
         <div class="tpg-rate-section" id="tpg-rate-${slot.tap_number}">
           ${agg.count>0?`<div class="tpg-rating-display" style="margin-bottom:10px"><div class="tpg-avg-stars">${tapPublicAvgStars(agg.avg)}</div><span>${agg.avg.toFixed(1)} · ${agg.count} rating${agg.count!==1?'s':''}</span></div>`:''}
           <div class="tpg-rate-lbl">Rate This Beer</div>
@@ -11473,9 +11627,90 @@ function tapBarDisplay(){
   _tbd.style.display = 'flex';
   _tbd.classList.add('active');
 
+  // Load comments ticker
+  tbdLoadAndStartTicker();
+
   // ESC to close
   document._tbdEscHandler = e => { if(e.key==='Escape') tapBarDisplayClose(); };
   document.addEventListener('keydown', document._tbdEscHandler);
+}
+
+// ── Bar Display Comments Ticker ─────────────────────
+let _tbdTickerInterval = null;
+
+async function tbdLoadAndStartTicker(){
+  const wrap  = document.getElementById('tbd-ticker-wrap');
+  const inner = document.getElementById('tbd-ticker-inner');
+  if(!wrap || !inner) return;
+
+  // Fetch recent ratings with comments from Supabase (anon read)
+  let comments = [];
+  try{
+    const url = new URL(`${TAP_PUBLIC_URL}/rest/v1/tap_ratings`);
+    url.searchParams.set('select', 'tap_number,rating,comment,tap_slot_row_id');
+    url.searchParams.set('order', 'created_at.desc');
+    url.searchParams.set('limit', '60');
+    // Only fetch rows where comment is not null/empty
+    url.searchParams.set('comment', 'not.is.null');
+    const r = await fetch(url.toString(), {
+      headers:{
+        'apikey': TAP_PUBLIC_ANON,
+        'Authorization': 'Bearer '+TAP_PUBLIC_ANON,
+        'Accept': 'application/json'
+      }
+    });
+    if(r.ok){
+      const rows = await r.json();
+      // Filter out empty-string comments
+      comments = rows.filter(row => row.comment && row.comment.trim().length > 0);
+    }
+  } catch(e){ console.warn('Ticker fetch failed:', e); }
+
+  if(!comments.length){
+    wrap.style.display = 'none';
+    return;
+  }
+
+  // Build beer name lookup from tapState
+  const beerNames = {};
+  tapState.slots.forEach(sl=>{ if(sl.beer_name) beerNames[sl.tap_number] = sl.beer_name; });
+
+  // Build ticker items HTML (duplicate for seamless loop)
+  function makeItem(row){
+    const stars = '★'.repeat(Math.round(row.rating||0)) + '☆'.repeat(5-Math.round(row.rating||0));
+    const beer  = beerNames[row.tap_number] || ('Tap '+row.tap_number);
+    const comment = row.comment.substring(0,80) + (row.comment.length>80?'…':'');
+    return `<span class="tbd-ticker-item">
+      <span class="tbd-ticker-stars">${stars}</span>
+      <span class="tbd-ticker-beer">${beer}</span>
+      <span class="tbd-ticker-sep">·</span>
+      <span class="tbd-ticker-comment">"${comment}"</span>
+    </span>`;
+  }
+
+  const itemsHtml = comments.map(makeItem).join('');
+  // Duplicate content so scroll loops seamlessly
+  inner.innerHTML = itemsHtml + itemsHtml;
+
+  // Calculate scroll duration based on content width
+  wrap.style.display = 'flex';
+  // Let DOM paint first, then measure
+  requestAnimationFrame(()=>{
+    const trackW  = document.getElementById('tbd-ticker-track')?.offsetWidth || 800;
+    const totalW  = inner.scrollWidth / 2; // half because duplicated
+    // pixels per second — ~80px/s feels like a TV ticker
+    const speed   = 80;
+    const duration = Math.max(15, totalW / speed);
+    inner.style.animationDuration = duration + 's';
+  });
+}
+
+function tbdStopTicker(){
+  const wrap = document.getElementById('tbd-ticker-wrap');
+  if(wrap) wrap.style.display = 'none';
+  const inner = document.getElementById('tbd-ticker-inner');
+  if(inner){ inner.innerHTML = ''; inner.style.animationDuration = '0s'; }
+  if(_tbdTickerInterval){ clearInterval(_tbdTickerInterval); _tbdTickerInterval = null; }
 }
 
 function tapBarDisplayClose(){
@@ -11483,6 +11718,7 @@ function tapBarDisplayClose(){
   _tbd2.classList.remove('active');
   _tbd2.style.display = 'none';
   if(_tbdClockInterval){ clearInterval(_tbdClockInterval); _tbdClockInterval=null; }
+  tbdStopTicker();
   if(document._tbdEscHandler){
     document.removeEventListener('keydown', document._tbdEscHandler);
     delete document._tbdEscHandler;
