@@ -11140,7 +11140,7 @@ async function tapLoadRatings(){
   const {data} = await cloudState.client
     .from(TAP_RATE_TABLE)
     .select('tap_number,rating')
-    .eq('tap_slot_row_id', rowId);
+    .eq('tap_id', rowId);
   if(!data||!data.length) return;
 
   // Average per tap_number
@@ -11308,7 +11308,7 @@ async function tapPublicPostRating(tapSlotRowId, tapNum, rating, comment){
       'Prefer': 'return=minimal'
     },
     body: JSON.stringify({
-      tap_slot_row_id: realRowId,
+      tap_id: realRowId,
       tap_number: tapNum,
       rating,
       comment: comment||null,
@@ -11478,7 +11478,7 @@ async function tapPublicLoad(){
     // Load ratings aggregate
     let ratingsMap = {};
     try{
-      const ratingRows = await tapPublicFetch('tap_ratings', 'tap_slot_row_id', row.id);
+      const ratingRows = await tapPublicFetch('tap_ratings', 'tap_id', row.id);
       ratingRows.forEach(r=>{
         const tn = r.tap_number;
         if(!ratingsMap[tn]) ratingsMap[tn]={sum:0,count:0};
@@ -11682,7 +11682,7 @@ async function tbdLoadAndStartTicker(){
   let comments = [];
   try{
     const url = new URL(`${TAP_PUBLIC_URL}/rest/v1/tap_ratings`);
-    url.searchParams.set('select', 'tap_number,rating,comment,tap_slot_row_id');
+    url.searchParams.set('select', 'tap_number,rating,comment,tap_id');
     url.searchParams.set('order', 'created_at.desc');
     url.searchParams.set('limit', '100');
     const r = await fetch(url.toString(), {
