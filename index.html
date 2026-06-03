@@ -11126,18 +11126,35 @@ async function tapLoadFromCloud(){
 }
 
 async function tapLoadRatings(){
-  if(!cloudState.client) return;
-  const ids = tapState.slots.filter(s=>s.id).map(s=>s.id);
-  if(!ids.length) return;
+  if(!cloudState.client||!cloudState.user) return;
+  // Find the tap_slots row id for this user
+  const {data: slotRows} = await cloudState.client
+    .from('tap_slots')
+    .select('id')
+    .eq('user_id', cloudState.user.id)
+    .maybeSingle();
+  if(!slotRows) return;
+  const rowId = slotRows.id;
+
+  // Load all ratings for this tap list row
   const {data} = await cloudState.client
     .from(TAP_RATE_TABLE)
-    .select('tap_id,rating')
-    .in('tap_id',ids);
+    .select('tap_number,rating')
+    .eq('tap_slot_row_id', rowId);
   if(!data||!data.length) return;
-  // Average per tap_id
+
+  // Average per tap_number
   const agg={};
-  data.forEach(r=>{ if(!agg[r.tap_id]) agg[r.tap_id]={sum:0,count:0}; agg[r.tap_id].sum+=r.rating; agg[r.tap_id].count++; });
-  tapState.slots.forEach(sl=>{ if(agg[sl.id]){ sl._avgRating=agg[sl.id].sum/agg[sl.id].count; sl._ratingCount=agg[sl.id].count; } });
+  data.forEach(r=>{
+    const tn = r.tap_number;
+    if(!agg[tn]) agg[tn]={sum:0,count:0};
+    agg[tn].sum+=r.rating;
+    agg[tn].count++;
+  });
+  tapState.slots.forEach(sl=>{
+    const tn = sl.tap_number;
+    if(agg[tn]){ sl._avgRating=agg[tn].sum/agg[tn].count; sl._ratingCount=agg[tn].count; }
+  });
   renderTapBoard();
 }
 
@@ -11249,22 +11266,39 @@ async function tapPublicFetch(table, filterKey, filterVal){
   return r.json();
 }
 
+async function tapPublicResolveRowId(tapSlotRowId){
+  // If we already have a real UUID, use it
+  if(tapSlotRowId && tapSlotRowId !== '__local__') return tapSlotRowId;
+
+  // Try URL handle first, then fall back to saved settings handle
+  const handle = tapPublicGetHandle() || (typeof tapLoadSettings==='function' ? tapLoadSettings().handle : '');
+  console.log('[tapRating] Resolving row ID via handle:', handle);
+  if(!handle) throw new Error('No brewery handle found. Set your handle in On Tap → Setup, then Save to Cloud.');
+
+  // Fetch just the matching row using a filter on the payload->settings->handle JSON path
+  // Supabase REST supports ->> for text extraction from jsonb
+  const url = new URL(`${TAP_PUBLIC_URL}/rest/v1/tap_slots`);
+  url.searchParams.set('select', 'id,payload');
+  url.searchParams.set('limit', '50');
+  const resp = await fetch(url.toString(), {
+    headers:{
+      'apikey': TAP_PUBLIC_ANON,
+      'Authorization': 'Bearer '+TAP_PUBLIC_ANON,
+      'Accept': 'application/json'
+    }
+  });
+  if(!resp.ok) throw new Error('Could not load tap list from server: '+resp.status);
+  const rows = await resp.json();
+  console.log('[tapRating] tap_slots rows fetched:', rows.length);
+  const row = rows.find(r => (r.payload?.settings?.handle||'').toLowerCase() === handle.toLowerCase());
+  if(!row) throw new Error('Tap list "'+handle+'" not found on server. Make sure you have saved to cloud.');
+  console.log('[tapRating] Resolved row ID:', row.id);
+  return row.id;
+}
+
 async function tapPublicPostRating(tapSlotRowId, tapNum, rating, comment){
-  // If called from local/fullscreen preview, resolve to real cloud row ID via handle
-  let realRowId = tapSlotRowId;
-  if(!tapSlotRowId || tapSlotRowId === '__local__'){
-    const handle = tapPublicGetHandle() || (typeof tapLoadSettings==='function' ? tapLoadSettings().handle : '');
-    if(handle){
-      try{
-        const rows = await tapPublicFetch('tap_slots');
-        const row  = rows.find(r=> (r.payload?.settings?.handle||'').toLowerCase()===handle.toLowerCase());
-        if(row) realRowId = row.id;
-      } catch(e){ /* fall through */ }
-    }
-    if(!realRowId || realRowId === '__local__'){
-      throw new Error('Ratings require a saved & published tap list. In the On Tap tab, click "Save to Cloud" then share via your public link or QR code.');
-    }
-  }
+  const realRowId = await tapPublicResolveRowId(tapSlotRowId);
+  console.log('[tapRating] Posting rating — rowId:', realRowId, 'tap:', tapNum, 'stars:', rating);
   const r = await fetch(`${TAP_PUBLIC_URL}/rest/v1/tap_ratings`, {
     method: 'POST',
     headers:{
@@ -11283,9 +11317,10 @@ async function tapPublicPostRating(tapSlotRowId, tapNum, rating, comment){
   });
   if(!r.ok){
     const errText = await r.text();
-    console.error('tapPublicPostRating failed:', errText);
+    console.error('[tapRating] POST failed:', r.status, errText);
     throw new Error(errText);
   }
+  console.log('[tapRating] Rating submitted successfully!');
 }
 
 function tapPublicSrmColor(srm){
@@ -11649,9 +11684,7 @@ async function tbdLoadAndStartTicker(){
     const url = new URL(`${TAP_PUBLIC_URL}/rest/v1/tap_ratings`);
     url.searchParams.set('select', 'tap_number,rating,comment,tap_slot_row_id');
     url.searchParams.set('order', 'created_at.desc');
-    url.searchParams.set('limit', '60');
-    // Only fetch rows where comment is not null/empty
-    url.searchParams.set('comment', 'not.is.null');
+    url.searchParams.set('limit', '100');
     const r = await fetch(url.toString(), {
       headers:{
         'apikey': TAP_PUBLIC_ANON,
