@@ -11233,6 +11233,7 @@ function tapPublicHide(){
   document.querySelector('header.hdr')?.style.removeProperty('display');
   document.querySelector('nav.tabs')?.style.removeProperty('display');
   document.querySelectorAll('.pane').forEach(el=>el.style.removeProperty('display'));
+  document.querySelectorAll('.modal-overlay, .lic-overlay, .upgrade-overlay').forEach(el=>el.style.removeProperty('display'));
   const active = document.querySelector('.pane.active') || document.getElementById('brew-notes');
   if(active) active.style.display='';
   if(document._tapEscHandler){
