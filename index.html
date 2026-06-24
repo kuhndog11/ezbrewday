@@ -8,6 +8,12 @@
   <meta property="og:title" content="EzBrewDay — Brewing Calculator">
   <meta property="og:url" content="https://app.ezbrewday.com">
   <meta name="theme-color" content="#F5A623">
+<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-title" content="EZBrewDay" />
+<link rel="manifest" href="/site.webmanifest" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -637,6 +643,12 @@ button[onclick="connectSupabase(true)"]{display:none!important}
 .tap-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tap-field-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .tap-setup-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:16px}
+@media(max-width:640px){
+  #tap-setup-panel .card-body>div[style*="grid-template-columns"]{display:flex!important;flex-direction:column!important}
+  #tap-setup-panel .card-body>div>div:first-child{border-right:none!important;border-bottom:1px solid var(--border);max-height:none!important;overflow-y:visible!important}
+  #tap-setup-panel .card-body>div>div:last-child{border-radius:0 0 var(--r) var(--r)!important;min-height:320px}
+  #tap-setup-preview{border-radius:0 0 var(--r) var(--r)!important}
+}
 .qr-box{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)}
 .qr-box canvas{border-radius:6px}
 .public-url-row{display:flex;gap:8px;align-items:center;margin-top:8px}
