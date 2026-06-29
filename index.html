@@ -14903,6 +14903,19 @@ document.addEventListener('keydown', function(e){
   }
 
   function startTour() {
+    // Tour requires desktop — spotlight positioning doesn't work reliably on mobile
+    if (window.innerWidth < 768) {
+      // Show a friendly toast nudge
+      const existing = document.getElementById('tour-mobile-toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.id = 'tour-mobile-toast';
+      toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--bg2,#1a1f2e);border:1.5px solid var(--accent,#F5A623);color:var(--text,#e8eaf0);border-radius:10px;padding:12px 18px;font-size:13px;font-weight:500;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.5);text-align:center;max-width:280px;line-height:1.4';
+      toast.innerHTML = '🖥️ <strong>Best on desktop!</strong><br>The guided tour is designed for larger screens. Open EzBrewDay on a computer for the full tour.';
+      document.body.appendChild(toast);
+      setTimeout(() => { if (toast.parentNode) toast.remove(); }, 4000);
+      return;
+    }
     tourActive = true;
     currentStep = 0;
     const overlay = document.getElementById('tour-overlay');
