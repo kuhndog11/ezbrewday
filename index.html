@@ -4892,7 +4892,7 @@ async function submitPasswordSetup(){
               </div>
               <div>
                 <label class="fl">Number of Taps <span class="dim">(free: max 3 · Pro: unlimited)</span></label>
-                <input type="number" id="tap-count" min="1" max="24" value="3" step="1" style="width:80px;font-family:var(--mono)" oninput="tapCountChanged(this);tapLivePreview()">
+                <input type="number" id="tap-count" min="1" max="40" value="3" step="1" style="width:80px;font-family:var(--mono)" oninput="tapCountChanged(this);tapLivePreview()">
                 <span id="tap-count-note" class="dim" style="font-size:11px;margin-left:8px"></span>
               </div>
               <div>
@@ -12988,26 +12988,35 @@ function tbdRenderBigName(slots, t, accent, count){
 
 function tbdRenderMenuList(slots, t, accent, count){
   const grid = document.getElementById('tbd-grid');
+  // Fit ALL taps on one screen: one row per tap, sized to divide the full
+  // screen height evenly (no cap, no cutoff). Type shrinks via CSS min()
+  // as `count` grows so it can never overflow its row.
   grid.style.gridTemplateColumns = '1fr';
-  grid.style.gridTemplateRows = 'repeat('+Math.min(count,10)+', 1fr)';
+  grid.style.gridTemplateRows = 'repeat('+count+', 1fr)';
+  const nameFont  = 'clamp(10px, min(2vw, calc(55vh / '+count+')), 26px)';
+  const styleFont = 'clamp(7px, min(.9vw, calc(16vh / '+count+')), 13px)';
+  const tapFont   = 'clamp(8px, min(.9vw, calc(20vh / '+count+')), 14px)';
+  const pillFont  = 'clamp(7px, min(.9vw, calc(16vh / '+count+')), 13px)';
+  const imgSize   = 'clamp(16px, min(3vw, calc(60vh / '+count+')), 52px)';
+  const padH      = 'clamp(6px, min(1.6vw, calc(30vh / '+count+')), 28px)';
   grid.innerHTML = slots.map((slot,i) => {
     if(!slot.is_active || !slot.beer_name){
-      return '<div style="background:'+t.emptyBg+';display:flex;align-items:center;padding:0 24px"><div style="opacity:.15;font-size:12px;color:'+t.tapLabelColor+'">Tap '+(i+1)+' — Empty</div></div>';
+      return '<div style="background:'+t.emptyBg+';display:flex;align-items:center;padding:0 '+padH+'"><div style="opacity:.15;font-size:'+tapFont+';color:'+t.tapLabelColor+'">Tap '+(i+1)+' — Empty</div></div>';
     }
     const srm = tapPublicSrmColor(slot.srm);
     var pills = '';
-    if(slot.abv) pills += '<div style="background:'+accent+'22;color:'+accent+';border:1px solid '+accent+'44;border-radius:999px;padding:2px 10px;font-size:clamp(10px,1vw,13px);font-family:var(--mono);font-weight:700">'+slot.abv+'%</div>';
-    if(slot.ibu) pills += '<div style="background:'+accent+'11;color:'+accent+'aa;border:1px solid '+accent+'33;border-radius:999px;padding:2px 10px;font-size:clamp(10px,1vw,13px);font-family:var(--mono)">'+slot.ibu+' IBU</div>';
-    return '<div style="background:'+t.cardBg+';display:flex;align-items:center;gap:clamp(10px,2vw,28px);padding:0 clamp(12px,2vw,28px);border-bottom:1px solid '+t.headerBorder+';border-left:4px solid '+srm+'">'
-      + '<div style="font-size:clamp(10px,1vw,14px);font-weight:800;color:'+accent+';letter-spacing:.1em;text-transform:uppercase;flex-shrink:0;min-width:2em;text-align:right">'+slot.tap_number+'</div>'
+    if(slot.abv) pills += '<div style="background:'+accent+'22;color:'+accent+';border:1px solid '+accent+'44;border-radius:999px;padding:1px 8px;font-size:'+pillFont+';font-family:var(--mono);font-weight:700">'+slot.abv+'%</div>';
+    if(slot.ibu) pills += '<div style="background:'+accent+'11;color:'+accent+'aa;border:1px solid '+accent+'33;border-radius:999px;padding:1px 8px;font-size:'+pillFont+';font-family:var(--mono)">'+slot.ibu+' IBU</div>';
+    return '<div style="background:'+t.cardBg+';display:flex;align-items:center;gap:clamp(6px,1vw,20px);padding:0 '+padH+';border-bottom:1px solid '+t.headerBorder+';border-left:4px solid '+srm+';overflow:hidden">'
+      + '<div style="font-size:'+tapFont+';font-weight:800;color:'+accent+';letter-spacing:.08em;text-transform:uppercase;flex-shrink:0;min-width:2em;text-align:right">'+slot.tap_number+'</div>'
       + (slot.beer_image
-        ? '<div style="width:clamp(34px,4vw,52px);height:clamp(34px,4vw,52px);border-radius:6px;overflow:hidden;flex-shrink:0;border:1px solid rgba(255,255,255,.1)"><img src="'+slot.beer_image+'" style="width:100%;height:100%;object-fit:cover" alt="'+slot.beer_name+'"></div>'
-        : '<div style="width:clamp(22px,2.5vw,36px);height:clamp(22px,2.5vw,36px);border-radius:50%;background:'+srm+';flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>')
+        ? '<div style="width:'+imgSize+';height:'+imgSize+';border-radius:6px;overflow:hidden;flex-shrink:0;border:1px solid rgba(255,255,255,.1)"><img src="'+slot.beer_image+'" style="width:100%;height:100%;object-fit:cover" alt="'+slot.beer_name+'"></div>'
+        : '<div style="width:calc('+imgSize+' * .6);height:calc('+imgSize+' * .6);border-radius:50%;background:'+srm+';flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>')
       + '<div style="flex:1;min-width:0">'
-      + '<div style="font-size:clamp(13px,2vw,26px);font-weight:800;color:'+t.beerNameColor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+slot.beer_name+'</div>'
-      + '<div style="font-size:clamp(9px,1vw,13px);color:'+t.styleColor+';text-transform:uppercase;letter-spacing:.06em">'+( slot.beer_style||'')+'</div>'
+      + '<div style="font-size:'+nameFont+';font-weight:800;color:'+t.beerNameColor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+slot.beer_name+'</div>'
+      + '<div style="font-size:'+styleFont+';color:'+t.styleColor+';text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+( slot.beer_style||'')+'</div>'
       + '</div>'
-      + '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">'+pills+'</div>'
+      + '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0">'+pills+'</div>'
       + '</div>';
   }).join('');
 }
@@ -13048,24 +13057,34 @@ function tbdRenderSpotlight(slots, t, accent, count){
 
 function tbdRenderCompact(slots, t, accent, count){
   const grid = document.getElementById('tbd-grid');
-  const cols = Math.min(count, 8);
+  // Fit ALL taps on one screen as a near-16:9 tile grid (no cap at 8 columns).
+  // Both dimensions are explicit 1fr tracks so the grid always exactly fills
+  // the display — nothing runs off-screen. Type shrinks via CSS min() based
+  // on both column count (vw) and row count (vh), so it can't overflow a tile.
+  const cols = Math.max(1, Math.ceil(Math.sqrt(count * 16/9)));
+  const rows = Math.max(1, Math.ceil(count / cols));
   grid.style.gridTemplateColumns = 'repeat('+cols+', 1fr)';
-  grid.style.gridTemplateRows = '';
+  grid.style.gridTemplateRows   = 'repeat('+rows+', 1fr)';
+  const nameFont  = 'clamp(9px, min(2vw, calc(38vh / '+rows+')), 20px)';
+  const tapFont   = 'clamp(7px, min(.85vw, calc(14vh / '+rows+')), 10px)';
+  const styleFont = 'clamp(7px, min(.8vw, calc(14vh / '+rows+')), 10px)';
+  const statFont  = 'clamp(8px, min(1.1vw, calc(16vh / '+rows+')), 16px)';
+  const pad       = 'clamp(3px, min(1vw, calc(10vh / '+rows+')), 14px)';
   grid.innerHTML = slots.map((slot,i) => {
     if(!slot.is_active || !slot.beer_name){
-      return '<div style="background:'+t.emptyBg+';display:flex;align-items:center;justify-content:center"><div style="font-size:clamp(16px,2vw,28px);font-weight:900;color:'+t.tapLabelColor+';opacity:.15">'+(i+1)+'</div></div>';
+      return '<div style="background:'+t.emptyBg+';display:flex;align-items:center;justify-content:center"><div style="font-size:'+nameFont+';font-weight:900;color:'+t.tapLabelColor+';opacity:.15">'+(i+1)+'</div></div>';
     }
     const srm = tapPublicSrmColor(slot.srm);
-    return '<div style="background:'+t.cardBg+';display:flex;flex-direction:column;padding:clamp(6px,1vw,14px);border-bottom:2px solid '+srm+';gap:3px">'
-      + '<div style="display:flex;align-items:center;gap:6px">'
-      + '<div style="width:clamp(8px,1vw,12px);height:clamp(8px,1vw,12px);border-radius:50%;background:'+srm+';flex-shrink:0"></div>'
-      + '<div style="font-size:clamp(8px,.75vw,10px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:'+accent+'">'+slot.tap_number+'</div>'
+    return '<div style="background:'+t.cardBg+';display:flex;flex-direction:column;padding:'+pad+';border-bottom:2px solid '+srm+';gap:2px;overflow:hidden">'
+      + '<div style="display:flex;align-items:center;gap:5px">'
+      + '<div style="width:8px;height:8px;border-radius:50%;background:'+srm+';flex-shrink:0"></div>'
+      + '<div style="font-size:'+tapFont+';font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:'+accent+'">'+slot.tap_number+'</div>'
       + '</div>'
-      + '<div style="font-size:clamp(11px,1.5vw,20px);font-weight:800;line-height:1.1;color:'+t.beerNameColor+'">'+slot.beer_name+'</div>'
-      + '<div style="font-size:clamp(8px,.8vw,10px);text-transform:uppercase;letter-spacing:.05em;color:'+t.styleColor+'">'+( slot.beer_style||'')+'</div>'
-      + '<div style="display:flex;gap:clamp(4px,.8vw,10px);margin-top:2px">'
-      + (slot.abv ? '<div style="font-family:var(--mono);font-size:clamp(10px,1.2vw,16px);font-weight:700;color:'+accent+'">'+slot.abv+'%</div>' : '')
-      + (slot.ibu ? '<div style="font-family:var(--mono);font-size:clamp(10px,1.2vw,16px);font-weight:700;color:'+t.styleColor+'">'+slot.ibu+' IBU</div>' : '')
+      + '<div style="font-size:'+nameFont+';font-weight:800;line-height:1.05;color:'+t.beerNameColor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+slot.beer_name+'</div>'
+      + '<div style="font-size:'+styleFont+';text-transform:uppercase;letter-spacing:.04em;color:'+t.styleColor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+( slot.beer_style||'')+'</div>'
+      + '<div style="display:flex;gap:8px;margin-top:auto">'
+      + (slot.abv ? '<div style="font-family:var(--mono);font-size:'+statFont+';font-weight:700;color:'+accent+'">'+slot.abv+'%</div>' : '')
+      + (slot.ibu ? '<div style="font-family:var(--mono);font-size:'+statFont+';font-weight:700;color:'+t.styleColor+'">'+slot.ibu+' IBU</div>' : '')
       + '</div>'
       + '</div>';
   }).join('');
@@ -13365,26 +13384,33 @@ window.tbdSpotlightSlot = function(idx){
 
 function tbdRenderScoreboard(slots, t, accent, count){
   const grid = document.getElementById('tbd-grid');
+  // Fit ALL taps on one screen: one row per tap, no cap. Type shrinks via
+  // CSS min() as `count` grows so it can't overflow its row.
   grid.style.gridTemplateColumns = '1fr';
-  grid.style.gridTemplateRows   = 'repeat('+Math.min(count,8)+', 1fr)';
+  grid.style.gridTemplateRows   = 'repeat('+count+', 1fr)';
+  const nameFont  = 'clamp(10px, min(1.8vw, calc(50vh / '+count+')), 28px)';
+  const styleFont = 'clamp(7px, min(.85vw, calc(14vh / '+count+')), 11px)';
+  const numFont   = 'clamp(10px, min(2vw, calc(40vh / '+count+')), 36px)';
+  const statFont  = 'clamp(9px, min(1.6vw, calc(30vh / '+count+')), 28px)';
+  const padH      = 'clamp(6px, min(1.6vw, calc(30vh / '+count+')), 28px)';
   grid.innerHTML = slots.map((slot,i) => {
     if(!slot.is_active || !slot.beer_name){
-      return '<div style="background:'+t.emptyBg+';display:flex;align-items:center;padding:0 clamp(12px,2vw,28px);opacity:.25"><div style="font-family:var(--mono);font-size:clamp(11px,1.2vw,16px);color:'+t.tapLabelColor+'">—  TAP '+(i+1)+'  —</div></div>';
+      return '<div style="background:'+t.emptyBg+';display:flex;align-items:center;padding:0 '+padH+';opacity:.25"><div style="font-family:var(--mono);font-size:'+styleFont+';color:'+t.tapLabelColor+'">—  TAP '+(i+1)+'  —</div></div>';
     }
     const srm = tapPublicSrmColor(slot.srm);
     const stars = slot._avgRating ? '★'.repeat(Math.round(slot._avgRating))+'☆'.repeat(5-Math.round(slot._avgRating)) : '';
-    const ratingDisp = slot._avgRating ? '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><span style="font-size:clamp(11px,1.2vw,16px);color:'+accent+';letter-spacing:1px">'+stars+'</span><span style="font-family:var(--mono);font-size:clamp(10px,1vw,14px);color:'+t.statLblColor+'">'+slot._avgRating.toFixed(1)+'</span></div>' : '';
-    return '<div style="background:'+t.cardBg+';display:flex;align-items:center;gap:clamp(10px,1.5vw,20px);padding:0 clamp(12px,2vw,28px);border-bottom:1px solid '+t.headerBorder+'">'
-      + '<div style="font-family:var(--mono);font-size:clamp(16px,2.5vw,36px);font-weight:900;color:'+accent+';min-width:1.6em;text-align:center;line-height:1">'+String(slot.tap_number).padStart(2,'0')+'</div>'
+    const ratingDisp = slot._avgRating ? '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0"><span style="font-size:'+styleFont+';color:'+accent+';letter-spacing:1px">'+stars+'</span><span style="font-family:var(--mono);font-size:'+styleFont+';color:'+t.statLblColor+'">'+slot._avgRating.toFixed(1)+'</span></div>' : '';
+    return '<div style="background:'+t.cardBg+';display:flex;align-items:center;gap:clamp(6px,1vw,20px);padding:0 '+padH+';border-bottom:1px solid '+t.headerBorder+';overflow:hidden">'
+      + '<div style="font-family:var(--mono);font-size:'+numFont+';font-weight:900;color:'+accent+';min-width:1.6em;text-align:center;line-height:1">'+String(slot.tap_number).padStart(2,'0')+'</div>'
       + '<div style="width:1px;height:60%;background:'+t.headerBorder+';flex-shrink:0"></div>'
-      + '<div style="width:clamp(12px,1.5vw,20px);height:clamp(12px,1.5vw,20px);border-radius:50%;background:'+srm+';flex-shrink:0"></div>'
+      + '<div style="width:calc('+numFont+' * .4);height:calc('+numFont+' * .4);border-radius:50%;background:'+srm+';flex-shrink:0"></div>'
       + '<div style="flex:1;min-width:0">'
-      + '<div style="font-size:clamp(14px,2vw,28px);font-weight:800;color:'+t.beerNameColor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+slot.beer_name+'</div>'
-      + '<div style="font-size:clamp(8px,.85vw,11px);text-transform:uppercase;letter-spacing:.08em;color:'+t.styleColor+'">'+( slot.beer_style||'')+'</div>'
+      + '<div style="font-size:'+nameFont+';font-weight:800;color:'+t.beerNameColor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+slot.beer_name+'</div>'
+      + '<div style="font-size:'+styleFont+';text-transform:uppercase;letter-spacing:.06em;color:'+t.styleColor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+( slot.beer_style||'')+'</div>'
       + '</div>'
-      + '<div style="display:flex;gap:clamp(12px,2vw,28px);align-items:center;flex-shrink:0">'
-      + (slot.abv ? '<div style="text-align:center"><div style="font-family:var(--mono);font-size:clamp(14px,2vw,28px);font-weight:700;color:'+accent+'">'+slot.abv+'%</div><div style="font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:'+t.statLblColor+'">ABV</div></div>' : '')
-      + (slot.ibu ? '<div style="text-align:center"><div style="font-family:var(--mono);font-size:clamp(14px,2vw,28px);font-weight:700;color:'+t.beerNameColor+'">'+slot.ibu+'</div><div style="font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:'+t.statLblColor+'">IBU</div></div>' : '')
+      + '<div style="display:flex;gap:clamp(6px,1vw,20px);align-items:center;flex-shrink:0">'
+      + (slot.abv ? '<div style="text-align:center"><div style="font-family:var(--mono);font-size:'+statFont+';font-weight:700;color:'+accent+'">'+slot.abv+'%</div><div style="font-size:7px;letter-spacing:.08em;text-transform:uppercase;color:'+t.statLblColor+'">ABV</div></div>' : '')
+      + (slot.ibu ? '<div style="text-align:center"><div style="font-family:var(--mono);font-size:'+statFont+';font-weight:700;color:'+t.beerNameColor+'">'+slot.ibu+'</div><div style="font-size:7px;letter-spacing:.08em;text-transform:uppercase;color:'+t.statLblColor+'">IBU</div></div>' : '')
       + ratingDisp
       + '</div>'
       + '</div>';
