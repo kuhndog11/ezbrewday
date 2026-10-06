@@ -112,7 +112,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .tact span{font-size:9.5px;color:var(--text3)}
 
 /* ── Inputs ── */
-input[type=text],input[type=number],input[type=date],select,textarea{
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],select,textarea{
   background:var(--input-bg,var(--bg3));border:1px solid var(--input-border,var(--border));color:var(--input-text,var(--text));
   padding:7px 10px;border-radius:6px;font-family:var(--sans);font-size:13px;
   width:100%;transition:.15s;outline:none;
@@ -429,7 +429,7 @@ linear-gradient(90deg,transparent 0 28%,rgba(20,184,166,.22) 28% 34%,transparent
   /* Larger touch targets */
   .tab{min-height:44px;display:flex;align-items:center}
   /* Input touch targets */
-  input[type=text],input[type=number],input[type=date],select,textarea{min-height:44px}
+  input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],select,textarea{min-height:44px}
 }
 @media(max-width:480px){
   .hdr-logo img,.hdr-icon{width:28px;height:28px}
@@ -1653,7 +1653,7 @@ html,body{overscroll-behavior-y:none;}
     <div class="modal-head">
       <div>
         <div class="modal-title">Upgrade to Brewday Pro</div>
-        <div class="hdr-sub">Buy Pro with your email, then create an account or sign in with that same email to unlock Pro automatically.</div>
+        <div class="hdr-sub" id="upgrade-subtitle">Subscribe with the email on your EzBrewDay account and Pro unlocks automatically.</div>
       </div>
       <button class="btn btn-ghost btn-sm" type="button" onclick="closeUpgradeModal()">Close</button>
     </div>
@@ -1682,10 +1682,10 @@ html,body{overscroll-behavior-y:none;}
             <div class="cline"><span>Clean PDF export</span><span class="badge badge-ok">No watermark</span></div>
             <div class="sep"></div>
             <div class="ctotal"><span>Choose Your Pro Plan</span><span class="cval">Monthly or Yearly</span></div>
-            <div class="helper">After purchase, create an account or sign in with the same email you used at checkout. Brewday will unlock Pro automatically if your subscription is active.</div>
+            <div class="helper" id="upgrade-helper">Use the same email as your EzBrewDay account at checkout and Pro unlocks automatically.</div>
             <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px">
-              <button class="btn btn-primary" type="button" onclick="startTrialCheckout()" style="justify-content:center;font-size:14px;padding:10px 12px">
-                🎁 Start 30-Day Free Trial (then $5/month)
+              <button class="btn btn-primary" id="upgrade-free-account-btn" type="button" onclick="closeUpgradeModal();openSignupGate(null)" style="justify-content:center;font-size:14px;padding:10px 12px;display:none">
+                🎁 Create a free account — 30 days of Pro, no card
               </button>
               <button class="btn btn-ghost" type="button" onclick="startMonthlyCheckout()" style="justify-content:center;font-size:14px;padding:10px 12px">
                 💳 Monthly – $5/month
@@ -1694,8 +1694,48 @@ html,body{overscroll-behavior-y:none;}
                 ⭐ Yearly – $45/year (Save 25%)
               </button>
             </div>
-            <div class="helper" style="margin-top:6px">A card is required to start the trial. You won't be charged until day 30, and you can cancel anytime before then.</div>
+            <div class="helper" style="margin-top:6px" id="upgrade-footnote">Cancel anytime. Everything you've built stays yours on the free plan.</div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Free-account signup gate (v23_8) -->
+<div class="modal-overlay" id="signup-gate-overlay" aria-hidden="true">
+  <div class="modal-card" style="max-width:480px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="signup-gate-title">Create your free account</div>
+        <div class="hdr-sub" id="signup-gate-sub">A free account keeps your recipes safe.</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="closeSignupGate()">Not now</button>
+    </div>
+    <div class="modal-body">
+      <div id="signup-gate-form">
+        <div class="notebox" style="margin-bottom:12px;line-height:1.7">
+          🎁 <strong>30 days of Pro, free</strong> — no credit card<br>
+          ☁️ This recipe saves to your cloud library<br>
+          🍺 The recipe builder, water chemistry and brew-day timer stay free forever
+        </div>
+        <label class="fl">Email</label>
+        <input type="email" id="signup-gate-email" placeholder="you@brewery.com" autocomplete="email">
+        <label class="fl" style="margin-top:10px">Password</label>
+        <input type="password" id="signup-gate-password" placeholder="At least 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitSignupGate()">
+        <div class="inline-actions" style="margin-top:12px">
+          <button class="btn btn-primary" id="signup-gate-btn" type="button" onclick="submitSignupGate()" style="justify-content:center;width:100%">Create free account</button>
+        </div>
+        <div id="signup-gate-status" class="cloud-status" style="display:none"></div>
+        <div class="note-sm" style="margin-top:10px">Already have an account? <a href="#" onclick="signupGateToLogin();return false" style="color:var(--teal)">Sign in</a></div>
+      </div>
+      <div id="signup-gate-done" style="display:none">
+        <div class="notebox" style="margin-bottom:12px;line-height:1.7">
+          📬 <strong>Check your email</strong> — we sent a confirmation link to <strong id="signup-gate-done-email"></strong>.<br>
+          Click it to switch on your 30 days of Pro and save this recipe to your cloud library.
+        </div>
+        <div class="inline-actions">
+          <button class="btn btn-primary" id="signup-gate-continue-btn" type="button" onclick="continueAfterSignup()" style="justify-content:center;width:100%">Continue</button>
         </div>
       </div>
     </div>
@@ -1707,7 +1747,7 @@ html,body{overscroll-behavior-y:none;}
     <div class="modal-head">
       <div>
         <div class="modal-title">Account Login</div>
-        <div class="hdr-sub" id="account-login-subtitle">Free users can use EzBrewDay without an account. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.</div>
+        <div class="hdr-sub" id="account-login-subtitle">Sign in to your EzBrewDay account, or create a free one.</div>
       </div>
       <button class="btn btn-ghost btn-sm" type="button" onclick="closeCloudModal()">Close</button>
     </div>
@@ -1740,7 +1780,7 @@ html,body{overscroll-behavior-y:none;}
           <div class="inline-actions" style="flex-wrap:wrap;gap:6px">
             <button class="btn btn-primary btn-sm" type="button" onclick="signInCloud()">Sign In</button>
             <button class="btn btn-ghost btn-sm" id="cloud-send-setup-btn" type="button" onclick="sendPasswordSetupEmail()" style="display:none">🔑 Forgot Password</button>
-            <button class="btn btn-ghost btn-sm" id="cloud-create-account-btn" type="button" onclick="signUpCloud()" style="display:none">Create Account</button>
+            <button class="btn btn-ghost btn-sm" id="cloud-create-account-btn" type="button" onclick="closeCloudModal();openSignupGate(null)" style="display:none">Create Free Account</button>
           </div>
           <div id="auth-setup-hint" style="display:none;margin-top:8px;padding:9px 11px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.2);border-radius:7px;font-size:11.5px;color:var(--text2);line-height:1.5">
             🔑 <strong style="color:var(--teal)">Forgot your password?</strong> Enter your email above and click <strong>Forgot Password</strong> — we'll send you a secure reset link right away.
@@ -4008,7 +4048,7 @@ function buildWorkflow(){
   updateWorkflowUI();
 }
 
-function renderWorkflowSteps(){const e=document.getElementById("workflow-body");e&&(workflowSteps.length?e.innerHTML=workflowSteps.map((e,t)=>{const a=t<workflowState.index?"wf-row done":t===workflowState.index?"wf-row active":"wf-row",n=e.duration>0?formatClock(e.duration):"Manual";const actualInfo=workflowState.stepActualLog&&workflowState.stepActualLog[t];const actualLine=actualInfo?`<div class="wf-desc" style="color:var(--teal);font-size:10.5px;margin-top:2px">⏱ Actual: ${actualInfo.elapsedMin}m ${actualInfo.elapsedSec}s (planned ${actualInfo.plannedMin}m) · ${actualInfo.start}–${actualInfo.end}</div>`:"";return`<div class="${a}">\n      <div class="wf-num">${e.n}</div>\n      <div>\n        <div class="wf-name">${e.name}</div>\n        <div class="wf-desc">${e.detail}</div>\n        ${actualLine}\n      </div>\n      <div class="wf-time">${n}</div>\n    </div>`}).join(""):e.innerHTML='<div class="wf-muted">No workflow built yet.</div>')}function logWorkflow(e,t){const a=document.getElementById("wf-log");if(!a)return;const n=(new Date).toLocaleTimeString([],{hour:"numeric",minute:"2-digit",second:"2-digit"}),o=document.createElement("div");o.className="wf-log-item",o.innerHTML=`<div><strong>${t||"Workflow"}</strong></div><div>${e}</div><div class="wf-muted">${n}</div>`,a.prepend(o)}function getWorkflowAudioContext(){try{return workflowState.audioCtx||(workflowState.audioCtx=new(window.AudioContext||window.webkitAudioContext)),"suspended"===workflowState.audioCtx.state&&workflowState.audioCtx.resume(),workflowState.audioCtx}catch(e){return null}}function beepWorkflow(e){try{const t=getWorkflowAudioContext();if(!t)return;(Array.isArray(e)&&e.length?e:[0,.22,.46]).forEach((e,a)=>{const n=t.createOscillator(),o=t.createGain();n.type="square",n.frequency.value=1===a?740:880,o.gain.value=1e-4,n.connect(o),o.connect(t.destination);const l=t.currentTime+e;n.start(l),o.gain.setValueAtTime(1e-4,l),o.gain.exponentialRampToValueAtTime(.06,l+.01),o.gain.exponentialRampToValueAtTime(1e-4,l+.18),n.stop(l+.2)})}catch(e){}}function stopWorkflowAlarm(){workflowState.alarmActive=!1,workflowState.alarmTimer&&clearInterval(workflowState.alarmTimer),workflowState.alarmTimer=null}function startWorkflowAlarm(){stopWorkflowAlarm(),workflowState.alarmActive=!0,beepWorkflow(),workflowState.alarmTimer=setInterval(()=>beepWorkflow(),1800)}function syncWorkflowToRunnableStep(e){if(!workflowSteps.length)return null;let t=workflowSteps[workflowState.index]||workflowSteps[0];for(;t&&t.duration<=0&&workflowState.index<workflowSteps.length-1;)logWorkflow(`${e||"Auto-advanced past"} ${t.name}.`,"Workflow"),workflowState.index+=1,t=workflowSteps[workflowState.index],workflowState.remaining=t?.duration||0,workflowState.stepDuration=t?.duration||0;return t}function startWorkflow(){if(stopWorkflowAlarm(),workflowSteps.length||buildWorkflow(),!workflowSteps.length)return;let e=workflowSteps[workflowState.index]||workflowSteps[0];e&&(e.duration<=0&&(e=syncWorkflowToRunnableStep("Auto-advanced past")),e?(workflowState.remaining=workflowState.remaining>0?workflowState.remaining:e.duration||0,workflowState.stepDuration=e.duration||0,workflowState.remaining<=0&&e.duration>0&&(workflowState.remaining=e.duration),workflowState.running=!0,workflowState.timer&&clearInterval(workflowState.timer),workflowState.stepStartWallTime=new Date(),workflowState.timer=setInterval(tickWorkflow,1e3),logWorkflow(`Timer started for ${e.name} at ${workflowState.stepStartWallTime.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}.`,"Started"),updateWorkflowUI()):updateWorkflowUI())}function pauseWorkflow(){stopWorkflowAlarm();if(workflowState.manualAutoTimer){clearTimeout(workflowState.manualAutoTimer);workflowState.manualAutoTimer=null;}workflowState.running=!1,workflowState.timer&&clearInterval(workflowState.timer),workflowState.timer=null,updateWorkflowUI()}function resetWorkflowTimer(){stopWorkflowAlarm(),pauseWorkflow();if(workflowState.manualAutoTimer){clearTimeout(workflowState.manualAutoTimer);workflowState.manualAutoTimer=null;}workflowState.index=0,workflowState.remaining=workflowSteps[0]?.duration||0,workflowState.stepDuration=workflowSteps[0]?.duration||0,workflowState.stepStartWallTime=null,workflowState.stepActualLog={},window._hopChecked={},document.getElementById("wf-log").innerHTML="";const f=document.getElementById("wf-float");f&&f.classList.remove("alarm-flash"),updateWorkflowUI(),renderWorkflowSteps()}function nextWorkflowStep(e){stopWorkflowAlarm();const f=document.getElementById("wf-float");f&&f.classList.remove("alarm-flash");const t=workflowSteps[workflowState.index];if(t&&(e?logWorkflow(`${t.name} complete.`,"Completed"):logWorkflow(`Manually advanced past ${t.name}.`,"Skipped Ahead")),workflowState.index<workflowSteps.length-1){workflowState.index+=1;const e=workflowSteps[workflowState.index];workflowState.remaining=e.duration||0,workflowState.stepDuration=e.duration||0,beepWorkflow([0]),(function(){
+function renderWorkflowSteps(){const e=document.getElementById("workflow-body");e&&(workflowSteps.length?e.innerHTML=workflowSteps.map((e,t)=>{const a=t<workflowState.index?"wf-row done":t===workflowState.index?"wf-row active":"wf-row",n=e.duration>0?formatClock(e.duration):"Manual";const actualInfo=workflowState.stepActualLog&&workflowState.stepActualLog[t];const actualLine=actualInfo?`<div class="wf-desc" style="color:var(--teal);font-size:10.5px;margin-top:2px">⏱ Actual: ${actualInfo.elapsedMin}m ${actualInfo.elapsedSec}s (planned ${actualInfo.plannedMin}m) · ${actualInfo.start}–${actualInfo.end}</div>`:"";return`<div class="${a}">\n      <div class="wf-num">${e.n}</div>\n      <div>\n        <div class="wf-name">${e.name}</div>\n        <div class="wf-desc">${e.detail}</div>\n        ${actualLine}\n      </div>\n      <div class="wf-time">${n}</div>\n    </div>`}).join(""):e.innerHTML='<div class="wf-muted">No workflow built yet.</div>')}function logWorkflow(e,t){const a=document.getElementById("wf-log");if(!a)return;const n=(new Date).toLocaleTimeString([],{hour:"numeric",minute:"2-digit",second:"2-digit"}),o=document.createElement("div");o.className="wf-log-item",o.innerHTML=`<div><strong>${t||"Workflow"}</strong></div><div>${e}</div><div class="wf-muted">${n}</div>`,a.prepend(o)}function getWorkflowAudioContext(){try{return workflowState.audioCtx||(workflowState.audioCtx=new(window.AudioContext||window.webkitAudioContext)),"suspended"===workflowState.audioCtx.state&&workflowState.audioCtx.resume(),workflowState.audioCtx}catch(e){return null}}function beepWorkflow(e){try{const t=getWorkflowAudioContext();if(!t)return;(Array.isArray(e)&&e.length?e:[0,.22,.46]).forEach((e,a)=>{const n=t.createOscillator(),o=t.createGain();n.type="square",n.frequency.value=1===a?740:880,o.gain.value=1e-4,n.connect(o),o.connect(t.destination);const l=t.currentTime+e;n.start(l),o.gain.setValueAtTime(1e-4,l),o.gain.exponentialRampToValueAtTime(.06,l+.01),o.gain.exponentialRampToValueAtTime(1e-4,l+.18),n.stop(l+.2)})}catch(e){}}function stopWorkflowAlarm(){workflowState.alarmActive=!1,workflowState.alarmTimer&&clearInterval(workflowState.alarmTimer),workflowState.alarmTimer=null}function startWorkflowAlarm(){stopWorkflowAlarm(),workflowState.alarmActive=!0,beepWorkflow(),workflowState.alarmTimer=setInterval(()=>beepWorkflow(),1800)}function syncWorkflowToRunnableStep(e){if(!workflowSteps.length)return null;let t=workflowSteps[workflowState.index]||workflowSteps[0];for(;t&&t.duration<=0&&workflowState.index<workflowSteps.length-1;)logWorkflow(`${e||"Auto-advanced past"} ${t.name}.`,"Workflow"),workflowState.index+=1,t=workflowSteps[workflowState.index],workflowState.remaining=t?.duration||0,workflowState.stepDuration=t?.duration||0;return t}function startWorkflow(){if(signupGateBlocks("start"))return;if(stopWorkflowAlarm(),workflowSteps.length||buildWorkflow(),!workflowSteps.length)return;let e=workflowSteps[workflowState.index]||workflowSteps[0];e&&(e.duration<=0&&(e=syncWorkflowToRunnableStep("Auto-advanced past")),e?(workflowState.remaining=workflowState.remaining>0?workflowState.remaining:e.duration||0,workflowState.stepDuration=e.duration||0,workflowState.remaining<=0&&e.duration>0&&(workflowState.remaining=e.duration),workflowState.running=!0,workflowState.timer&&clearInterval(workflowState.timer),workflowState.stepStartWallTime=new Date(),workflowState.timer=setInterval(tickWorkflow,1e3),logWorkflow(`Timer started for ${e.name} at ${workflowState.stepStartWallTime.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}.`,"Started"),updateWorkflowUI()):updateWorkflowUI())}function pauseWorkflow(){stopWorkflowAlarm();if(workflowState.manualAutoTimer){clearTimeout(workflowState.manualAutoTimer);workflowState.manualAutoTimer=null;}workflowState.running=!1,workflowState.timer&&clearInterval(workflowState.timer),workflowState.timer=null,updateWorkflowUI()}function resetWorkflowTimer(){stopWorkflowAlarm(),pauseWorkflow();if(workflowState.manualAutoTimer){clearTimeout(workflowState.manualAutoTimer);workflowState.manualAutoTimer=null;}workflowState.index=0,workflowState.remaining=workflowSteps[0]?.duration||0,workflowState.stepDuration=workflowSteps[0]?.duration||0,workflowState.stepStartWallTime=null,workflowState.stepActualLog={},window._hopChecked={},document.getElementById("wf-log").innerHTML="";const f=document.getElementById("wf-float");f&&f.classList.remove("alarm-flash"),updateWorkflowUI(),renderWorkflowSteps()}function nextWorkflowStep(e){stopWorkflowAlarm();const f=document.getElementById("wf-float");f&&f.classList.remove("alarm-flash");const t=workflowSteps[workflowState.index];if(t&&(e?logWorkflow(`${t.name} complete.`,"Completed"):logWorkflow(`Manually advanced past ${t.name}.`,"Skipped Ahead")),workflowState.index<workflowSteps.length-1){workflowState.index+=1;const e=workflowSteps[workflowState.index];workflowState.remaining=e.duration||0,workflowState.stepDuration=e.duration||0,beepWorkflow([0]),(function(){
   const nowStr=new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
   workflowState.stepStartWallTime = e.duration > 0 ? new Date() : null;
   const startNote = e.duration > 0 ? ` (started ${nowStr})` : ` (manual step — ${nowStr})`;
@@ -4304,8 +4344,9 @@ function restoreAutosave() {
 function clearAutosave() {
   try { localStorage.removeItem(AUTOSAVE_KEY); } catch(e) {}
 }
-function resetAll(){
-  if(!confirm('Clear everything and start a fresh blank recipe?')) return;
+function resetAll(opts){
+  if(!(opts&&opts.skipGate) && currentRecipeHasContent() && signupGateBlocks("reset")) return;
+  if(!(opts&&opts.skipConfirm) && !confirm('Clear everything and start a fresh blank recipe?')) return;
   clearAutosave();
   // Clear all text/number inputs except settings
   document.querySelectorAll('input[type="text"],input[type="number"],input[type="date"],textarea').forEach(el=>{
@@ -5705,28 +5746,32 @@ function refreshCloudModalAccess(){
   if(signedPro){
     signedPro.textContent = signedIn
       ? (pro
-          ? `Pro Active${cloudState.proLicense?.expires_at ? ' · Expires ' + formatProExpiry(cloudState.proLicense.expires_at) : ''}`
-          : 'Signed in, but no active Pro subscription found for this account.')
+          ? (cloudState.proLicense?.is_trial
+              ? `Pro trial · ${proTrialDaysLeft()} day${proTrialDaysLeft()===1?'':'s'} left (ends ${formatProExpiry(cloudState.proLicense.expires_at)})`
+              : `Pro Active${cloudState.proLicense?.expires_at ? ' · Expires ' + formatProExpiry(cloudState.proLicense.expires_at) : ''}`)
+          : (cloudState.proLicense?.is_trial && cloudState.proLicense?.expired
+              ? `Free plan · your Pro trial ended ${formatProExpiry(cloudState.proLicense.expires_at)}`
+              : 'Free plan'))
       : 'Checking Pro access…';
   }
 
   // "Create Account" is now hidden — accounts are created server-side by Stripe webhook.
   // Users set their password via the magic link email, not this form.
-  if(createBtn) createBtn.style.display = 'none';
+  if(createBtn) createBtn.style.display = signedIn ? 'none' : '';
 
   if(subtitle){
     subtitle.textContent = signedIn
       ? 'You are signed in.'
-      : 'Sign in with your Pro account email and password. Forgot your password? Enter your email and click Forgot Password.';
+      : 'Sign in to your EzBrewDay account, or create a free one (includes 30 days of Pro).';
   }
 
   if(info){
     info.style.display = signedIn ? 'none' : 'block';
-    info.innerHTML = 'Sign in with your Pro account email and password. Forgot your password? Enter your email and click <strong>Forgot Password</strong> to get a reset link.';
+    info.innerHTML = 'Sign in with your EzBrewDay email and password. Forgot your password? Enter your email and click <strong>Forgot Password</strong> to get a reset link.';
   }
 
   if(footnote){
-    footnote.innerHTML = 'Use the email address from your Stripe receipt.';
+    footnote.innerHTML = 'Bought Pro before you had an account? Use the email from your Stripe receipt.';
   }
 
   if(note){
@@ -5735,7 +5780,7 @@ function refreshCloudModalAccess(){
       note.textContent='Signed in successfully. Pro is active for this account.';
     }else if(signedIn){
       note.style.display='';
-      note.textContent='Signed in. No active Pro subscription found. If you just purchased, wait a moment and refresh, or contact support.';
+      note.textContent='Signed in on the free plan. Your saved cloud recipes are still here to open — saving new ones needs Pro. Just purchased? Wait a moment and refresh.';
     }else{
       note.style.display='none';
       note.textContent='';
@@ -5743,7 +5788,7 @@ function refreshCloudModalAccess(){
   }
 
   if(section){
-    section.style.display = (signedIn && pro) ? '' : 'none';
+    section.style.display = signedIn ? '' : 'none';
   }
 
   if(list && signedIn && pro && !(cloudState.recipes||[]).length){
@@ -5761,7 +5806,7 @@ async function showCloudLibrary(){
   if(await ensureCloudReady()){
     await refreshServerProStatus(false);
     refreshCloudModalAccess();
-    if(isProUser()){
+    if(cloudState.user){
       await refreshCloudRecipes();
     }
     refreshCloudModalAccess();
@@ -5908,7 +5953,7 @@ cloudState.client=window.supabase.createClient(cfg.url,cfg.anon, {auth:{storage:
     }
   }
   const error=null;
-  cloudState.user=_newUser||null; const _baseMsg = window.__sbStorageBlocked ? "Connected (session storage limited by browser — sign-in works but won't persist across page reloads). Try Chrome or Firefox for full experience." : "Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email."; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):_baseMsg, cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='PASSWORD_RECOVERY' || ((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && (window.__recoveryHash||'').includes('type=recovery'))) && session?.user){ window.__recoveryHash=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); return; } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Existing Pro users can sign in. Create Account is only available right after checkout using the same Stripe email.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
+  cloudState.user=_newUser||null; const _baseMsg = window.__sbStorageBlocked ? "Connected (session storage limited by browser — sign-in works but won't persist across page reloads). Try Chrome or Firefox for full experience." : "Connected. Sign in, or create a free account."; updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):_baseMsg, cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity(); processPendingSignupSave();} if(cloudState.client?.auth?.onAuthStateChange && !cloudState.authListenerBound){cloudState.authListenerBound=true; cloudState.client.auth.onAuthStateChange(async (_evt,session)=>{cloudState.user=session?.user||null; if((_evt==='PASSWORD_RECOVERY' || ((_evt==='SIGNED_IN'||_evt==='TOKEN_REFRESHED') && (window.__recoveryHash||'').includes('type=recovery'))) && session?.user){ window.__recoveryHash=''; const emailEl=document.getElementById('setup-email'); if(emailEl) emailEl.value=session.user.email||''; const expEl=document.getElementById('setup-expired-email'); if(expEl) expEl.value=session.user.email||''; showSetupFormPanel(); return; } updateCloudStatus(cloudState.user?('Connected as '+cloudState.user.email):'Connected. Sign in, or create a free account.', cloudState.user?'ok':''); if(cloudState.user){await refreshServerProStatus(false); renderLicenseSupportState(); refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity(); processPendingSignupSave();} else {cloudState.proLicense=null; cloudState.recipes=[]; cloudState.equipmentProfiles=[]; refreshProUI()} refreshCloudRecipes();});}
  return true;
 }catch(e){updateCloudStatus('Connection failed: '+e.message,'bad'); cloudState.connected=false; return false}}
 /** Show/hide the setup-email button as the user types their email */
@@ -5966,27 +6011,170 @@ async function sendPasswordSetupEmail(){
   if(pwSection) pwSection.style.opacity = '0.4';
 }
 
+// ===== Free-account signup gate (v23_8) =====
+// Brew-day Start and Reset (on a recipe with content) ask signed-out users to
+// create a free account. The 30-day Pro trial is granted by a database trigger
+// when the user confirms their email (see grant_reverse_trial in Supabase).
+const SIGNUP_PENDING_KEY='ezbd_signup_pending';
+const PENDING_CLOUD_SAVE_KEY='ezbd_pending_cloud_save';
+let _signupGateAction=null;
+function currentRecipeHasContent(){
+  try{
+    const name=(document.getElementById('beerName')?.value||'').trim();
+    return !!name || document.querySelectorAll('[id^="grain-row-"]').length>0;
+  }catch(e){ return false; }
+}
+function hasStoredAuthSession(){
+  try{
+    const key=Object.keys(localStorage).find(k=>k.includes('auth-token'));
+    if(!key) return false;
+    const raw=JSON.parse(localStorage.getItem(key)||'{}')||{};
+    return !!(raw.user || raw.access_token || (raw.currentSession&&raw.currentSession.access_token));
+  }catch(e){ return false; }
+}
+function isSignedInOrPending(){
+  if(cloudState && cloudState.user) return true;
+  if(licenseState && licenseState.valid) return true;
+  if(hasStoredAuthSession()) return true;
+  try{ if(localStorage.getItem(SIGNUP_PENDING_KEY)) return true; }catch(e){}
+  return false;
+}
+function signupGateBlocks(action){
+  if(isSignedInOrPending()) return false;
+  openSignupGate(action);
+  return true;
+}
+function setSignupGateStatus(msg,type){
+  const el=document.getElementById('signup-gate-status');
+  if(!el) return;
+  el.style.display=msg?'':'none';
+  el.textContent=msg||'';
+  el.className='cloud-status'+(type==='bad'?' bad':type==='ok'?' ok':'');
+}
+function openSignupGate(action){
+  _signupGateAction=action||null;
+  const title=document.getElementById('signup-gate-title');
+  const sub=document.getElementById('signup-gate-sub');
+  if(title) title.textContent = action==='start' ? 'Create a free account to start your brew day'
+    : action==='reset' ? 'Save this recipe before you start a new one'
+    : 'Create your free account';
+  if(sub) sub.textContent = action==='reset'
+    ? 'Right now this recipe only lives in this browser. A free account saves it to your cloud library.'
+    : 'Takes 20 seconds. Your recipe gets saved to your cloud library.';
+  const form=document.getElementById('signup-gate-form');
+  const done=document.getElementById('signup-gate-done');
+  if(form) form.style.display='';
+  if(done) done.style.display='none';
+  setSignupGateStatus('','');
+  const btn=document.getElementById('signup-gate-btn');
+  if(btn){ btn.disabled=false; btn.textContent='Create free account'; }
+  const ov=document.getElementById('signup-gate-overlay');
+  if(ov){ ov.classList.add('show'); ov.setAttribute('aria-hidden','false'); }
+  setTimeout(()=>document.getElementById('signup-gate-email')?.focus(),60);
+}
+function closeSignupGate(){
+  const ov=document.getElementById('signup-gate-overlay');
+  if(ov){ ov.classList.remove('show'); ov.setAttribute('aria-hidden','true'); }
+}
+function signupGateToLogin(){
+  const email=(document.getElementById('signup-gate-email')?.value||'').trim();
+  closeSignupGate();
+  showCloudModal();
+  const el=document.getElementById('cloud-email');
+  if(el && email) el.value=email;
+}
+async function submitSignupGate(){
+  const email=(document.getElementById('signup-gate-email')?.value||'').trim().toLowerCase();
+  const password=document.getElementById('signup-gate-password')?.value||'';
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ setSignupGateStatus('Enter a valid email address.','bad'); return; }
+  if(password.length<6){ setSignupGateStatus('Use a password with at least 6 characters.','bad'); return; }
+  const btn=document.getElementById('signup-gate-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Creating account…'; }
+  try{
+    if(!await connectSupabase(false)){ setSignupGateStatus('Could not reach the server. Check your connection and try again.','bad'); return; }
+    const {data,error}=await cloudState.client.auth.signUp({email,password,options:{emailRedirectTo:'https://app.ezbrewday.com'}});
+    if(error){ setSignupGateStatus(error.message,'bad'); return; }
+    // Supabase returns a user with no identities when the email is already registered.
+    if(data && data.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
+      setSignupGateStatus('That email already has an account — sign in instead.','bad');
+      return;
+    }
+    // Stash the recipe on screen so it can be saved to the cloud after they confirm.
+    try{
+      if(currentRecipeHasContent()) localStorage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify(collectCloudPayload()));
+      localStorage.setItem(SIGNUP_PENDING_KEY, email);
+    }catch(e){}
+    if(data && data.session && data.session.user){
+      // Email confirmation is off: they're signed in already.
+      cloudState.user=data.session.user;
+      await refreshServerProStatus(true);
+      refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();
+      processPendingSignupSave();
+    }
+    const doneEmail=document.getElementById('signup-gate-done-email');
+    if(doneEmail) doneEmail.textContent=email;
+    const cont=document.getElementById('signup-gate-continue-btn');
+    if(cont) cont.textContent = _signupGateAction==='start' ? '▶ Start my brew day'
+      : _signupGateAction==='reset' ? 'Start a new recipe' : 'Continue';
+    document.getElementById('signup-gate-form').style.display='none';
+    document.getElementById('signup-gate-done').style.display='';
+  }catch(e){
+    setSignupGateStatus('Sign-up failed: '+(e.message||e),'bad');
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Create free account'; }
+  }
+}
+function continueAfterSignup(){
+  const action=_signupGateAction;
+  _signupGateAction=null;
+  closeSignupGate();
+  if(action==='start') startWorkflow();
+  else if(action==='reset') resetAll({skipGate:true,skipConfirm:true});
+}
+let _pendingSaveRunning=false;
+async function processPendingSignupSave(){
+  if(_pendingSaveRunning || !cloudState.user) return;
+  try{ localStorage.removeItem(SIGNUP_PENDING_KEY); }catch(e){}
+  let raw=null;
+  try{ raw=localStorage.getItem(PENDING_CLOUD_SAVE_KEY); }catch(e){}
+  if(!raw) return;
+  if(!isProUser()) return; // trial not active (yet) — keep it for the next sign-in
+  _pendingSaveRunning=true;
+  try{
+    const payload=JSON.parse(raw);
+    const name=((payload&&payload.beerName)||'My First Recipe').trim()||'My First Recipe';
+    const {error}=await cloudState.client.from(CLOUD_TABLE).upsert(
+      {user_id:cloudState.user.id,name,payload,updated_at:new Date().toISOString()},
+      {onConflict:'user_id,name'});
+    if(error){ console.warn('[pendingSave] failed:',error.message); return; }
+    localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
+    updateCloudStatus('Welcome! Your 30-day Pro trial is on, and "'+name+'" is saved to your cloud library.','ok');
+    refreshCloudRecipes().catch(()=>{});
+  }catch(e){
+    console.warn('[pendingSave] error:',e.message);
+  }finally{
+    _pendingSaveRunning=false;
+  }
+}
+function proTrialDaysLeft(){
+  const exp=cloudState&&cloudState.proLicense&&cloudState.proLicense.expires_at;
+  if(!exp) return 0;
+  return Math.max(0, Math.ceil((new Date(exp).getTime()-Date.now())/86400000));
+}
+
 async function signUpCloud(){
   if(!await connectSupabase(false)) return showCloudModal();
   const email=cloudSel('cloud-email')?.value?.trim()||'';
   const password=cloudSel('cloud-password')?.value||'';
-  const checkoutEmail=getStoredCheckoutEmail();
-  if(!checkoutEmail){
-    updateCloudStatus('Create Account is only available right after Stripe checkout. Free users do not need an account. Existing Pro users can sign in.','bad');
-    refreshCloudModalAccess();
-    return;
-  }
+  // v23_8: anyone can create a free account (30-day Pro trial is granted
+  // server-side when they confirm their email).
   if(!email||password.length<6){
-    updateCloudStatus('Enter the same Stripe checkout email and a password with at least 6 characters.','bad');
+    updateCloudStatus('Enter your email and a password with at least 6 characters.','bad');
     return;
   }
-  if(email.trim().toLowerCase()!==checkoutEmail){
-    updateCloudStatus('Create Account must use the same email used during Stripe checkout: '+checkoutEmail,'bad');
-    return;
-  }
-  const {error}=await cloudState.client.auth.signUp({email,password});
+  const {error}=await cloudState.client.auth.signUp({email,password,options:{emailRedirectTo:'https://app.ezbrewday.com'}});
   if(error){updateCloudStatus(error.message,'bad'); return}
-  updateCloudStatus('Account created. You can now sign in with '+email+'.','ok');
+  updateCloudStatus('Account created. Check '+email+' for a confirmation link.','ok');
   refreshCloudModalAccess();
 }
 // Show Edge warning in login modal if tracking prevention is active
@@ -6435,7 +6623,7 @@ async function deleteCloudEquipmentProfile(id){
 async function refreshCloudRecipes(){
   const list=cloudSel('saved-cloud-list');
   const equipmentList=cloudSel('saved-cloud-equipment-list');
-  if(!isProUser()){ refreshCloudModalAccess(); return; }
+  if(!cloudState.user){ refreshCloudModalAccess(); return; }
   // If not yet connected, attempt connection; otherwise use existing state directly
   if(!cloudState.client || !cloudState.user){
     if(list && !cloudState.user){
@@ -6659,6 +6847,7 @@ function getBestVisibleProLicense(rows){
     starts_at:r.starts_at||null,
     expires_at:r.expires_at||null,
     license_key:r.license_key||'',
+    is_trial:!!r.is_trial,
     active:r.status==='active' && !!r.expires_at && new Date(r.expires_at).getTime()>now,
     expired:!!r.expires_at && new Date(r.expires_at).getTime()<=now
   }));
@@ -6692,7 +6881,7 @@ async function refreshServerProStatus(showMsg){
   let proFetchOk = false;
   try{
     const res = await Promise.race([
-      cloudState.client.from('pro_licenses').select('id,email,plan,status,starts_at,expires_at,license_key,user_id').order('expires_at',{ascending:false}),
+      cloudState.client.from('pro_licenses').select('id,email,plan,status,starts_at,expires_at,license_key,user_id,is_trial').order('expires_at',{ascending:false}),
       new Promise((_,reject)=>setTimeout(()=>reject(new Error('PRO_STATUS_TIMEOUT')),6000))
     ]);
     if(res && !res.error){ proData = res.data; proFetchOk = true; }
@@ -6707,7 +6896,7 @@ async function refreshServerProStatus(showMsg){
       const raw = key ? (JSON.parse(localStorage.getItem(key)||'{}')||{}) : {};
       const token = raw.access_token || (raw.currentSession && raw.currentSession.access_token) || null;
       if(!cfg.url || !token) throw new Error('No REST credentials');
-      const url = cfg.url+'/rest/v1/pro_licenses?select=id,email,plan,status,starts_at,expires_at,license_key,user_id&order=expires_at.desc';
+      const url = cfg.url+'/rest/v1/pro_licenses?select=id,email,plan,status,starts_at,expires_at,license_key,user_id,is_trial&order=expires_at.desc';
       const resp = await fetch(url,{headers:{'apikey':cfg.anon,'Authorization':'Bearer '+token,'Accept':'application/json'}});
       if(resp.ok){ proData = await resp.json(); proFetchOk = true; }
       else{
@@ -6735,7 +6924,18 @@ function isProUser(){
   return result;
 }
 
-function showUpgradeModal(){document.getElementById('upgrade-overlay')?.classList.add('show')}
+function showUpgradeModal(){
+  const signedIn=!!(cloudState&&cloudState.user);
+  const freeBtn=document.getElementById('upgrade-free-account-btn');
+  if(freeBtn) freeBtn.style.display=signedIn?'none':'';
+  const helper=document.getElementById('upgrade-helper');
+  if(helper){
+    helper.textContent=signedIn
+      ? 'Checkout opens with '+cloudState.user.email+' filled in — keep that email and Pro unlocks automatically.'
+      : 'New here? Start with a free account — you get 30 days of Pro with no card. Or subscribe now and use the same email when you sign in.';
+  }
+  document.getElementById('upgrade-overlay')?.classList.add('show');
+}
 function closeUpgradeModal(){document.getElementById('upgrade-overlay')?.classList.remove('show')}
 function startBeerCheckout(){ window.open(BUY_BRETT_A_BEER_LINK,'_blank','noopener,noreferrer'); }
 function storeCheckoutEmail(){
@@ -6746,19 +6946,24 @@ function startTrialCheckout(){
   storeCheckoutEmail();
   window.open(STRIPE_TRIAL_MONTHLY_LINK,'_blank','noopener,noreferrer');
 }
+function withPrefilledEmail(link){
+  const email=cloudState&&cloudState.user&&cloudState.user.email;
+  if(!email) return link;
+  return link+(link.indexOf('?')>=0?'&':'?')+'prefilled_email='+encodeURIComponent(email);
+}
 function startMonthlyCheckout(){
   storeCheckoutEmail();
-  window.open(STRIPE_MONTHLY_LINK,'_blank','noopener,noreferrer');
+  window.open(withPrefilledEmail(STRIPE_MONTHLY_LINK),'_blank','noopener,noreferrer');
 }
 function startYearlyCheckout(){
   storeCheckoutEmail();
-  window.open(STRIPE_YEARLY_LINK,'_blank','noopener,noreferrer');
+  window.open(withPrefilledEmail(STRIPE_YEARLY_LINK),'_blank','noopener,noreferrer');
 }
 function getProFeatureLabel(feature){
   return ({settings:'Settings + branding',cloud:'Cloud sync + library',libraries:'Ingredient library editing'})[feature]||'Pro feature'
 }
 function promptUpgrade(feature){
-  const msg=getProFeatureLabel(feature)+' is available in Brewday Pro. Buy Pro with your email, then create an account or sign in with that same email.';
+  const msg=getProFeatureLabel(feature)+' is part of EzBrewDay Pro.';
   if(typeof updateCloudStatus==='function') updateCloudStatus(msg,'bad');
   showUpgradeModal();
   return false;
