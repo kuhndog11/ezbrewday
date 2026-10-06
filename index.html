@@ -1820,7 +1820,7 @@ html,body{overscroll-behavior-y:none;}
         <div id="saved-cloud-equipment-list" class="saved-list"></div>
       </div>
       <div class="notebox" id="login-account-note">
-        Use the email address from your Stripe receipt. If you haven't set a password yet, check your inbox for the setup email we sent after purchase — or click <strong>Forgot Password</strong> to get a new link.
+        Forgot your password? Enter your email above and click <strong>Forgot Password</strong> to get a reset link. Bought Pro through Stripe and never set a password? Same thing — use the email from your receipt.
       </div>
     </div>
   </div>
@@ -4461,6 +4461,41 @@ async function checkForPasswordRecovery(){
   const isHashRecovery  = hash.includes('type=recovery');
   const isHashMagicLink = hash.includes('type=magiclink') || hash.includes('type=signup');
   const hasCode         = new URLSearchParams(search).has('code');
+
+  // v23_8: a used or expired link (e.g. a work email scanner opened the
+  // confirmation link first). For sign-up links the email is already
+  // confirmed by then, so just ask them to sign in.
+  const searchParams = new URLSearchParams(search);
+  const linkError = hashParams.get('error_code') || hashParams.get('error') || searchParams.get('error_code') || searchParams.get('error');
+  if(linkError){
+    window.history.replaceState(null,'',window.location.pathname);
+    showCloudModal();
+    updateCloudStatus('That link was already used or has expired. If you just confirmed your email, you\'re all set — sign in below to start your 30 days of Pro.','bad');
+    return;
+  }
+
+  // v23_8: email-confirmation link from the free sign-up. They already
+  // chose a password, so don't show the password-setup modal.
+  if(hash.includes('type=signup')){
+    window.history.replaceState(null,'',window.location.pathname);
+    let su = cloudState.user || null;
+    for(let i = 0; !su && i < 16; i++){
+      await new Promise(r => setTimeout(r, 500));
+      su = cloudState.user || null;
+    }
+    if(!su){
+      showCloudModal();
+      updateCloudStatus('Your email is confirmed! Sign in below to start your 30 days of Pro.','ok');
+      return;
+    }
+    try{ localStorage.removeItem(SIGNUP_PENDING_KEY); }catch(e){}
+    await refreshServerProStatus(true);
+    refreshCloudModalAccess(); refreshProUI(); forceUnlockCommunity();
+    await processPendingSignupSave();
+    showCloudModal();
+    if(isProUser()) updateCloudStatus('Email confirmed — your 30 days of Pro are on. Welcome to EzBrewDay!','ok');
+    return;
+  }
 
   if(!isHashRecovery && !isHashMagicLink && !hasCode) return;
 
