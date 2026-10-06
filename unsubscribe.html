@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Email Preferences — EzBrewDay</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0e1117;--bg2:#161b26;--bg3:#1e2637;
+      --border:#2a3550;
+      --teal:#14b8a6;--teal2:#0d9488;--teal3:rgba(20,184,166,.1);
+      --text:#e2e8f0;--text2:#94a3b8;--text3:#546a8b;--red:#f87171;
+      --sans:'Inter',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+    .card{width:100%;max-width:440px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:28px 24px;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+    .brand{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+    .icon{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--teal),var(--teal2));display:flex;align-items:center;justify-content:center;font-size:15px}
+    .brand b{font-size:14px;letter-spacing:-.01em}
+    h1{font-size:19px;font-weight:700;margin-bottom:8px;letter-spacing:-.01em}
+    p{color:var(--text2);margin-bottom:14px}
+    .note{font-size:13px;color:var(--text3);background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:18px}
+    button{width:100%;font:inherit;font-weight:600;border:0;border-radius:8px;padding:12px 16px;cursor:pointer;background:var(--teal);color:#06231f}
+    button:hover{background:var(--teal2);color:#fff}
+    button.ghost{background:transparent;color:var(--text2);border:1px solid var(--border);margin-top:10px}
+    button.ghost:hover{color:var(--text);background:var(--bg3)}
+    button:disabled{opacity:.6;cursor:default}
+    .err{color:var(--red)}
+    a{color:var(--teal)}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand"><div class="icon">🍺</div><b>EzBrewDay</b></div>
+
+    <section id="ask">
+      <h1>Unsubscribe from EzBrewDay emails?</h1>
+      <p>You'll stop getting tips, check-ins and Pro offers from Brett.</p>
+      <div class="note">You'll still get emails you need: password resets, receipts and payment notices.</div>
+      <button id="unsub-btn" type="button">Unsubscribe</button>
+    </section>
+
+    <section id="done" class="hidden">
+      <h1>You're unsubscribed</h1>
+      <p>No more tips or offers. Your account, recipes and brew history are untouched.</p>
+      <button class="ghost" id="resub-btn" type="button">Oops — keep sending me emails</button>
+      <p style="margin-top:16px;font-size:13px">Back to <a href="https://app.ezbrewday.com">EzBrewDay</a></p>
+    </section>
+
+    <section id="resubbed" class="hidden">
+      <h1>You're back on the list</h1>
+      <p>Thanks for sticking around. Happy brewing!</p>
+      <p style="font-size:13px">Back to <a href="https://app.ezbrewday.com">EzBrewDay</a></p>
+    </section>
+
+    <section id="bad" class="hidden">
+      <h1>That link didn't work</h1>
+      <p>It may be incomplete. Reply to any EzBrewDay email and Brett will take you off the list by hand.</p>
+    </section>
+
+    <p id="msg" class="err hidden" style="margin-top:12px;font-size:13px"></p>
+  </main>
+
+  <script>
+    // Link format: https://app.ezbrewday.com/unsubscribe.html?u=<user_id>&t=<token>
+    // Opening this page does nothing on its own (email scanners open links too);
+    // only pressing the button calls the server.
+    (function () {
+      var FN = 'https://txbkzksugiranyuckzje.supabase.co/functions/v1/email-unsubscribe';
+      var q = new URLSearchParams(location.search);
+      var u = q.get('u') || '', t = q.get('t') || '';
+      function show(id) {
+        ['ask', 'done', 'resubbed', 'bad'].forEach(function (s) {
+          document.getElementById(s).classList.toggle('hidden', s !== id);
+        });
+      }
+      function err(text) {
+        var m = document.getElementById('msg');
+        m.textContent = text; m.classList.toggle('hidden', !text);
+      }
+      if (!/^[0-9a-f-]{36}$/i.test(u) || !/^[0-9a-f]{64}$/i.test(t)) { show('bad'); return; }
+
+      async function call(action, btn, nextId) {
+        btn.disabled = true; err('');
+        try {
+          var url = FN + '?u=' + encodeURIComponent(u) + '&t=' + encodeURIComponent(t) + (action ? '&action=' + action : '');
+          var res = await fetch(url, { method: 'POST' });
+          var body = await res.json().catch(function () { return {}; });
+          if (res.ok && body.ok) { show(nextId); }
+          else if (res.status === 403 || res.status === 400) { show('bad'); }
+          else { err('Something went wrong (' + (body.error || res.status) + '). Please try again in a minute.'); }
+        } catch (e) {
+          err('Could not reach the server. Check your connection and try again.');
+        } finally { btn.disabled = false; }
+      }
+      var ub = document.getElementById('unsub-btn');
+      var rb = document.getElementById('resub-btn');
+      ub.addEventListener('click', function () { call('', ub, 'done'); });
+      rb.addEventListener('click', function () { call('resubscribe', rb, 'resubbed'); });
+    })();
+  </script>
+</body>
+</html>
