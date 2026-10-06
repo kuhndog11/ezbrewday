@@ -5675,6 +5675,7 @@ const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProf
   async function _tabReconnect(){
     if(_busy) return;
     _busy = true;
+    const _hadUser = !!cloudState.user;
     try {
       await connectSupabase(false);
       if(cloudState.user){
@@ -5683,7 +5684,9 @@ const cloudState={client:null,user:null,connected:false,recipes:[],equipmentProf
         refreshProUI();
         forceUnlockCommunity();
       } else {
-        updateCloudStatus('Cloud session expired — please sign in again.', 'bad');
+        // v23_8: only say "expired" if they were actually signed in a moment ago.
+        if(_hadUser) updateCloudStatus('Cloud session expired — please sign in again.', 'bad');
+        else updateCloudStatus('Not signed in. Sign in, or create a free account.', '');
         refreshCloudModalAccess();
         refreshProUI();
       }
